@@ -1,0 +1,929 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="ClientGlobalContext.js.aspx"></script>
+    <script src="im360_common.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/jquery@3.1.1/dist/jquery.js"></script>
+
+    <script src="https://unpkg.com/vue-select@3.0.0"></script>
+    <link rel="stylesheet" href="https://unpkg.com/vue-select@3.0.0/dist/vue-select.css">
+
+    <link rel="stylesheet" href="https://unpkg.com/element-ui@2.2.0/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui@2.2.0/lib/index.js"></script>
+
+</head>
+
+<body>
+    <div id="app">
+        <div v-if="showLoading" id="loading">
+            <div id="loading-content">
+                <img src="im360_Loading.gif" />
+            </div>
+        </div>
+
+        <div>
+            <div class="select-box">
+                <v-select v-model="selectedIdAndSubject" @input="setSelected" placeholder="Select ticket"
+                          :options="selectOptions" />
+            </div>
+
+            <div class="expand-button">
+                <img src="im360_refresh.png" v-on:click="refresh" class="expand-image" title="Retrieve more tickets" />
+            </div>
+
+            <div v-if="notFoundMessage" class="not-found">
+                {{notFoundMessage}}
+            </div>
+
+            <div v-if="record && record.subject">
+                <div id="viewerHead">
+                    <h3>#{{record.id}} {{record.subject}}</h3>
+                    <p v-if="record.company && record.company.name">
+                        <strong class="boldCompany">Company</strong>
+                        <a class="underlined"
+                           @click="companyTickets(record.company_id, record.company.name)">{{record.company.name}}</a>
+                    </p>
+
+                    <div v-if="record.created_at" class="recordTags">
+                        <strong class="boldDue">Date created:  </strong>
+                        {{record.created_at.substring(0, 10)}}
+                        
+                    </div>
+
+                    <div v-if="record.requesterEmail" class="recordTags">
+                        <strong class="boldRequester">Partner email address:</strong>
+                        {{record.requesterEmail}}
+                    </div>
+                    
+                    <div v-if="record.tags && record.tags[0]" class="recordTags">
+                        <strong class="boldTags">Tags:</strong>
+                        <ul id="tags">
+                            <li v-for="item in record.tags" :key="item" v-html="item"></li>
+                        </ul>
+                    </div>
+                   
+                    
+
+
+
+
+                    <br>
+                </div>
+
+                <div class="MainMessage">
+                    <div v-if="record.attachments && record.attachments[0]">
+                        <strong>Attachments:</strong>
+                        <ul>
+                            <li v-for="item in record.attachments" :key="item.name">
+                                <a :href="item.attachment_url" target="_blank">{{item.name}}</a>
+                            </li>
+                        </ul>
+                        <br>
+                    </div>
+                    <div v-if="record.requesterEmail" class="MessageHeader">
+                        {{record.created_at.substring(0, 10)}}
+                        {{record.created_at.substring(11,19)}} {{record.requesterEmail}}
+                    </div>
+                    <div class="scrollableDiv" v-html="record.description"></div>
+                </div>
+            </div>
+            
+
+
+
+
+
+
+            <div v-if="!notFoundMessage" class="collapse-ticket-summary">
+                <el-row>
+                    <el-collapse>
+                        <el-collapse accordion>
+                            <!--CM-1348 Added by Lin on 17 Feb 2021-->
+                            <el-collapse-item>
+                                <template slot="title">
+                                    Summary Of Tickets
+                                    <el-button class="more-btn" type="text">Expand / Collapse</el-button>
+                                </template>
+
+                                <div>
+                                    Total tickets group by month:
+                                </div>
+                                <div style="margin-left: 20px;" v-html="groupByMonthTickets"></div>
+
+                                <div>
+                                    Total tickets group by Queue:
+                                </div>
+                                <div style="margin-left: 20px;" v-html="groupByQueueTickets"></div>
+
+                                <div v-if="averageResolveTime">
+                                    Average time to resolve ticket:
+                                </div>
+                                <div v-if="averageResolveTime" style="margin-left: 20px;" v-html="averageResolveTime"></div>
+                            </el-collapse-item>
+                        </el-collapse>
+</el-row>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+
+        var zendesk_bcn = '';
+        var zendesk_resellerName = '';
+        var zendesk_ticketIdParam = '';
+
+        function setClientApiContext(xrm, resellerId, resellerName, newnavigationtab) {
+            var pageTitle = 'Zendesk';
+            console.log(`${pageTitle} - setClientApiContext started...`);
+            var im360_bcn = resellerId;
+            if (im360_bcn) {
+                zendesk_bcn = im360_bcn;
+                console.log(`${pageTitle} - BCN has been replaced with im360_bcn: ${im360_bcn}`);
+            }
+            console.log(`${pageTitle} - BCN: ${zendesk_bcn}`);
+            zendesk_resellerName = resellerName;
+            
+            if (newnavigationtab) {
+                console.log(`${pageTitle} - newnavigationtab: ${newnavigationtab.toString()}`);
+            } else {
+                console.log(`${pageTitle} - newnavigationtab is null`);
+            }
+            if (newnavigationtab && newnavigationtab.toString().startsWith('Freshdesk')) {
+                var paramsFromExtraqs = newnavigationtab.toString().split('_');
+                console.log(`${pageTitle} - paramsFromExtraqs: ${paramsFromExtraqs.join(',')}`);
+                zendesk_ticketIdParam = paramsFromExtraqs[1];
+                console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
+                console.log(`${pageTitle} - BCN before check: ${zendesk_bcn}`);
+                if (!zendesk_bcn && paramsFromExtraqs.length > 2) {
+                    var paramBCN = paramsFromExtraqs[2];
+                    console.log(`${pageTitle} - paramsFromExtraqs[2]: ${paramBCN}`);
+                    if (paramBCN) {
+                        zendesk_bcn = paramBCN;
+                        console.log(`${pageTitle} - BCN has been replaced by paramBCN: ${paramBCN}`);
+                    }
+                }
+            }
+        };
+
+        var items = [];
+
+        var record = {};
+
+        Vue.component('v-select', VueSelect.VueSelect);
+
+        var app = new Vue({
+            el: '#app',
+            data: {
+                pageTitle: 'Zendesk',
+                zendeskBaseUrl: '',
+                funcCode: '',
+                funcCodeForComments: '',
+                funcCodeForTickets: '',
+                funcCodeForJsonById: '',
+                selectedIdAndSubject: '',
+                selectOptions: [],
+                record: null,
+                items: null,
+                showLoading: true,
+                startTime: Date.now(),
+                notFoundMessage: '',
+                ticketSummary: [],
+                groupByMonthTickets: '',
+                groupByQueueTickets: '',
+                averageResolveTime: '',
+            },
+            async mounted() {
+                if (!zendesk_bcn){
+                    zendesk_bcn = localStorage.getItem('accountBCN');
+                }
+                if (!zendesk_bcn){
+                    var account = await this.getAccountBCN();
+                    if (account) {
+                        zendesk_bcn = account.im360_bcn;
+                    }
+                }
+                console.log(`${this.pageTitle} - zendesk_bcn value in mounted(): ${zendesk_bcn}`);
+                this.showLoadingPage();
+                this.startTime = Date.now();
+
+                var funcCodeString = '';
+                var zendeskConfig = await this.getZendeskConfig();
+                if (zendeskConfig) {
+                    this.zendeskBaseUrl = zendeskConfig.im360_value;
+                    funcCodeString = zendeskConfig.im360_value2;
+                } else {
+                    console.error(`${this.pageTitle} - zendeskConfig is null`);
+                    this.hideLoadingPage();
+                }
+                console.log(`${this.pageTitle} - try to start getTickets function`);
+
+                var zendeskBaseUrl = this.zendeskBaseUrl;
+                var funcCodeArr = funcCodeString.toString().split(';;;;');
+                var funcCodeForTickets = funcCodeArr[2];
+                var funcCode = funcCodeArr[0];
+                var funcCodeForComments = funcCodeArr[1];  // TODO: 250910, add getComments function
+                var funcCodeForJsonById = funcCodeArr[3];
+                this.funcCodeForComments = funcCodeForComments;
+                this.funcCodeForTickets = funcCodeForTickets;
+                this.funcCode = funcCode;
+                this.funcCodeForJsonById = funcCodeForJsonById;
+                if (this.zendeskBaseUrl && zendesk_bcn) {
+                    this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
+                } else {
+                    setTimeout(() => {
+                        if (!zendesk_bcn) {
+                            zendesk_bcn = localStorage.getItem('accountBCN');
+                        }
+                        console.log(`${this.pageTitle} - zendesk_bcn: ${zendesk_bcn}`);
+                        var message = 'try to start getTickets function for the second time';
+                        console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
+                        if (zendesk_bcn) {
+                            this.notFoundMessage = '';
+                            this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
+                        } else {
+                            this.notFoundMessage = "Account BCN is required to find related tickets.";
+                            this.hideLoadingPage();
+                        }
+                    }, 3000);
+                }
+            },
+            methods: {
+                async getZendeskConfig() {
+                    var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                         <entity name='im360_configuration'> \
+                             <attribute name='im360_value'/> \
+                             <attribute name='im360_value2'/> \
+                             <attribute name='im360_value3'/> \
+                             <attribute name='im360_value4'/> \
+                             <filter type='and'> \
+                                 <condition attribute='im360_name' operator='eq' value='FreshdeskAPI' /> \
+                                 <condition attribute='statuscode' operator='eq' value='1' /> \
+                             </filter> \
+                         </entity> \
+                         </fetch>";
+
+                    var pageTitle = this.pageTitle;
+                    return Xrm.WebApi.retrieveMultipleRecords("im360_configuration", "?fetchXml=" + fetchXml).then(
+                        function success(result) {
+                            if (result != null) {
+                                return result.entities[0];
+                            } else {
+                                console.error(`${pageTitle} - Cannot get Zendesk configuration.`);
+                                return null;
+                            }
+                        },
+                        function (error) {
+                            console.error(`${pageTitle} - ${error.message}`);
+                            this.hideLoadingPage();
+                            return null;
+                        }
+                    );
+                },
+
+                async getAccountBCN() {
+                    var accountid = this.getValueParam();
+                    if (accountid) {
+                        var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                            <entity name='account'> \
+                                <attribute name='im360_bcn' /> \
+                                <filter type='and'> \
+                                    <condition attribute='accountid' operator='eq' value='" + accountid + "' /> \
+                                </filter> \
+                            </entity> \
+                            </fetch>";
+
+                        var pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null) {
+                                    return result.entities[0];
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get Account BCN.`);
+                                    return null;
+                                }
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage();
+                                return null;
+                            }
+                        );
+                    } else{
+                        return null;
+                    }
+                },
+
+                getValueParam() {
+                    var valueid = '';
+                    var vals = new Array();
+                    if (location.search != "") {
+                        vals = location.search.substr(1).split("&");
+                        for (var i in vals) {
+                            vals[i] = vals[i].replace(/\+/g, " ").split("=");
+                            if (vals[i][0].includes("id", 0)) {
+                                valueid = vals[i][1];
+                                valueid = valueid.replace('{', '').replace('}', '');
+                            }
+                        }
+                    }
+                    if (valueid.length > 36) valueid = valueid.substr(3, 36);
+                    return valueid;
+                },
+
+                async getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets, selected, limit = '12') {
+                    var pageTitle = this.pageTitle;
+                    console.log(`${pageTitle} -  getTickets started...`);
+
+                    var response;
+                    try {
+                        // TODO: change the limit value from the front end value user chose
+                        var fullUrl = `${zendeskBaseUrl}/searchByResellerId?limit=${limit}&code=${funcCodeForTickets}&resellerId=${zendesk_bcn}`;
+                        console.log(fullUrl);
+                        response = await axios.get(fullUrl);
+                    } catch (err) {
+                        console.error(`${pageTitle} - Zendesk API error`);
+                        console.log(err);
+                        this.hideLoadingPage();
+                    }
+                    if (response && response.data) {
+                        items = response.data.results;
+                        this.items = items;
+                        if (items && items.length > 0) {
+                            if (!selected) {
+                                selected = `${items[0]['id']}.${items[0]['subject']}`;
+                                this.selectOptions.length = 0;
+                                items.forEach(item => {
+                                    this.selectOptions.push(`${item.id}.${item.subject}`);
+                                });
+                            }
+                            this.selectedIdAndSubject = selected;
+                            var ticketId = getTicketId(this.selectedIdAndSubject);
+                            console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
+                            if (zendesk_ticketIdParam) {
+                                ticketId = zendesk_ticketIdParam;
+                                zendesk_ticketIdParam = '';
+                            }
+                            console.log(`${pageTitle} - ticketId: ${ticketId}`);
+                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId);
+                            if (this.record) {
+                                var subjectGet = this.record['subject'];
+                                this.selectedIdAndSubject = `${ticketId}.${subjectGet}`;
+                                console.log(`${pageTitle} - subjectGet: ${subjectGet}`);
+                            }
+                        } else {
+                            record = null;
+                        }
+                        if (record) {
+                            this.ticketSummary = this.getTicketSummary(items);
+                            if (this.ticketSummary.length > 0) {
+                                this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
+                                this.groupByQueueTickets = await this.getGroupByQueueTickets(zendeskBaseUrl, funcCode, this.ticketSummary);
+                                const averageTime = await this.getAverageResolveTime(zendeskBaseUrl, funcCode, items);
+                                const averageDays = Math.floor(averageTime / 24);
+                                const averageHours = Math.round(averageTime % 24);
+                                if (averageDays > 0) {
+                                    this.averageResolveTime = `<b>${averageDays}</b> days `;
+                                }
+                                this.averageResolveTime += `<b>${averageHours}</b> hours.`;
+                            }
+                        }
+                    } else {
+                        console.error(`${pageTitle} - Get Zendesk all tickets error`);
+                        this.hideLoadingPage();
+                    }
+                    if (!record && this.selectOptions.length === 0) {
+                        if (zendesk_resellerName.endsWith('.')) {
+                            this.notFoundMessage = `No ticket found for ${zendesk_bcn} - ${zendesk_resellerName}`;
+                        } else {
+                            this.notFoundMessage = `No ticket found for ${zendesk_bcn} - ${zendesk_resellerName}.`;
+                        }
+                    }
+                    this.hideLoadingPage();
+                },
+
+                async setSelected() {
+                    const ticketId = getTicketId(this.selectedIdAndSubject);
+                    this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId);
+                },
+
+                async getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) {
+                    let result = 'N/A';
+                    if (jsonId && jsonId !== 'null') {
+                        const response = await axios.get(`${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`);
+
+                        result = response.data ? response.data : '';
+                    }
+                    return result;
+                },
+
+                // async getConversation(ticketId, zendeskBaseUrl, funcCodeForComments) {
+                //     let result = 'N/A';
+                //     if (ticketId && ticketId !== 'null') {
+                //         const response = await axios.get(`${zendeskBaseUrl}/getCommentById?code=${funcCodeForComments}&itemId=${ticketId}`);
+
+                //         result = response.data ? response.data.comments : '';
+                //     }
+                //     return result;
+                // },
+
+                async getGroupName(groupId, zendeskBaseUrl, funcCode) {
+                    let result = 'N/A';
+                    if (groupId && groupId !== 'null') {
+                        const response = await axios.get(`${zendeskBaseUrl}/getDataById?code=${funcCode}&category=groups&itemId=${groupId}`);
+
+                        result = response.data ? response.data.name : '';
+                    }
+                    return result;
+                },
+
+                async getAgentName(responderId, zendeskBaseUrl, funcCode) {
+                    let result = '';
+                    if (responderId && responderId !== 'null') {
+                        const response = await axios.get(`${zendeskBaseUrl}/getDataById?code=${funcCode}&category=agents&itemId=${responderId}`);
+
+                        result = response.data && response.data.contact ? response.data.contact.name : '';
+                    }
+                    return result;
+                },
+
+                refresh() {
+                    this.showLoadingPage();
+                    this.getTickets(this.zendeskBaseUrl, this.funcCode, this.funcCodeForTickets, '', 100, this.hideLoadingPage);
+                },
+
+                async getTicket(zendeskBaseUrl, funcCode, ticketId) {
+                    const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}`;
+                    console.log(fullUrl);
+                    const response = await axios.get(fullUrl);
+
+                    var result = response.data;
+                    if (result) {
+                        result = convertValue(result);
+
+                        if (result && result.ticket) {
+                            result = {
+                            ...result,
+                            ...result.ticket
+                            };
+                            delete result.ticket;
+                        }
+                        let jsonPath = 'users';
+                        let jsonId = result.requester_id;
+                        let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                        result.requesterEmail = userData.user ? userData.user.email : '';
+                        //result.strQueue = await this.getGroupName(result.group_id, zendeskBaseUrl, this.funcCode);
+                        //result.strAgent = await this.getAgentName(result.responder_id, zendeskBaseUrl, this.funcCode);
+
+                        let jsonIdForAssignee = result.assignee_id;
+                        let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
+                        result.strAgent = agentData.user ? agentData.user.name : '';
+                        //result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
+                        //result.issueType = this.getIssueType(result, isStage);
+                    }
+                    
+                    return result;
+                },
+
+                showLoadingPage() {
+                    this.showLoading = true;
+                },
+
+                hideLoadingPage() {
+                    if (Date.now() - this.startTime < 500) {
+                        setTimeout(() => {
+                            this.showLoading = false;
+                        }, 500);
+                    } else {
+                        this.showLoading = false;
+                    }
+                },
+
+                getTicketSummary(items) {
+                    const result = [];
+                    try {
+                        items.forEach(item => {
+                            const createdAt = new Date(item.created_at);
+                            const strMonth = (createdAt.getMonth() + 1).toString();
+                            const fullMonth = strMonth.length === 1 ? `0${strMonth}` : `${strMonth}`;
+                            const yearAndMonth = `${createdAt.getFullYear()}-${fullMonth}`;
+                            const groupId = item.group_id;
+                            const ticketObj = {
+                                yearAndMonth,
+                                groupId
+                            }
+                            result.push(ticketObj);
+                        });
+                    } catch (err) {
+                        console.error(`${this.pageTitle} - Zendesk getTicketSummary error`);
+                        this.hideLoadingPage();
+                    }
+                    return result;
+                },
+
+                getGroupByMonthTickets(ticketSummaryParam) {
+                    var result = '';
+                    try {
+                        const groupByMonth = groupBy("yearAndMonth");
+                        const groupedTickets = groupByMonth(ticketSummaryParam);
+                        Object.keys(groupedTickets).forEach(key => {
+                            if (result && result.length > 0) {
+                                result += '<br>';
+                            }
+                            result += key;
+                            result += ': ';
+                            result += `<b>${groupedTickets[key]}</b>`;
+                        });
+                    } catch (err) {
+                        console.error(`${this.pageTitle} - getGroupByMonthTickets error`);
+                        this.hideLoadingPage();
+                    }
+                    return result;
+                },
+
+                async getGroupByQueueTickets(zendeskBaseUrl, funcCode, ticketSummaryParam) {
+                    var result = '';
+                    try {
+                        const groupByQueue = groupBy("groupId");
+                        const queueTickets = groupByQueue(ticketSummaryParam);
+                        await asyncForEach(Object.keys(queueTickets), async key => {
+                            if (result && result.length > 0) {
+                                result += '<br>';
+                            }
+                            var keyName = await this.getGroupName(key, zendeskBaseUrl, funcCode);
+                            result += keyName;
+                            result += ': ';
+                            result += `<b>${queueTickets[key]}</b>`;
+                        });
+                    } catch (err) {
+                        console.error(`${this.pageTitle} - getGroupByQueueTickets error`);
+                        this.hideLoadingPage();
+                    }
+                    return result;
+                },
+
+                async getAverageResolveTime(zendeskBaseUrl, funcCode, itemsParam) {
+                    const result = [];
+                    var finalResult = 0;
+
+                    try {
+                        await asyncForEach(itemsParam, async item => {
+                            var ticket = await this.getTicket(zendeskBaseUrl, funcCode, item.id);
+                            if (ticket.status === 4 || ticket.status === 5) {
+                                const createdAt = ticket.created_at;
+                                const closedAt = ticket.stats.closed_at ? ticket.stats.closed_at : ticket.stats.resolved_at;
+                                if (closedAt) {
+                                    const utcCreated = getUTC(createdAt, item.id);
+                                    const utcClosed = getUTC(closedAt);
+                                    const hours = Math.floor(utcClosed - utcCreated) / (1000 * 60 * 60);
+                                    result.push(hours);
+                                }
+                            }
+                        });
+
+                        if (result.length > 0) {
+                            var sum = 0;
+                            result.forEach(item => {
+                                sum += item;
+                            });
+                            finalResult = sum / result.length;
+                        }
+                    } catch (err) {
+                        console.error(`${this.pageTitle} - getAverageResolveTime error`);
+                        this.hideLoadingPage();
+                    }
+                    return finalResult;
+                }
+            }
+        });
+
+        const getUTC = (strDateParam, ticketId) => {
+            const dateParam = new Date(strDateParam);
+            const result = Date.UTC(dateParam.getFullYear(), dateParam.getMonth(), dateParam.getDate(), dateParam.getHours());
+            return result;
+        }
+
+        const getTicketId = (selectedIdAndSubject) => {
+            const ticketId = selectedIdAndSubject ? selectedIdAndSubject.substring(0, selectedIdAndSubject.indexOf('.')) : '';
+            return ticketId;
+        }
+
+        const convertValue = (item) => {
+            if (!item) {
+                return null;
+            }
+            item.strPriority = getPriority(item.priority);
+            item.strStatus = getStatus(item.status);
+            item.strSource = getSource(item.source);
+            item.strProduct = item.custom_fields ? item.custom_fields.cf_product : '';  // not "product_id"
+            item.strAgent = '';   // Agent
+            item.strQueue = '';   // Group
+            return item;
+        }
+
+        const getPriority = (priority) => {
+            if (!priority) {
+                return "";
+            }
+            let result = "";
+            switch (priority) {
+                case 1:
+                    result = "Low";
+                    break;
+                case 2:
+                    result = "Medium";
+                    break;
+                case 3:
+                    result = "High";
+                    break;
+                case 4:
+                    result = "Urgent";
+                    break;
+            }
+            return result;
+        };
+
+        const getSource = (source) => {
+            if (!source) {
+                return "";
+            }
+            let result = "";
+            switch (source) {
+                case 1:
+                    result = "Email";
+                    break;
+                case 2:
+                    result = "Portal";
+                    break;
+                case 3:
+                    result = "Phone";
+                    break;
+                case 7:
+                    result = "Chat";
+                    break;
+                case 8:
+                    result = "Mobihelp";
+                    break;
+                case 9:
+                    result = "Feedback Widget";
+                    break;
+                case 10:
+                    result = "Outbound Email";
+                    break;
+            }
+            return result;
+        };
+
+        const getStatus = (status) => {
+            if (!status) {
+                return "";
+            }
+            let result = "";
+            switch (status) {
+                case 2:
+                    result = "Open";
+                    break;
+                case 3:
+                    result = "Pending";
+                    break;
+                case 4:
+                    result = "Resolved";
+                    break;
+                case 5:
+                    result = "Closed";
+                    break;
+                case 7:
+                    result = "Waiting for 3rd party";
+                    break;
+                case 8:
+                    result = "New";
+                    break;
+                case 9:
+                    result = "Waiting for maintenance";
+                    break;
+            }
+            return result;
+        };
+
+        const groupBy = (key) => {
+            return function group(array) {
+                return array.reduce((acc, obj) => {
+                    const property = obj[key];
+                    acc[property] = acc[property] ? acc[property] + 1 : 1;
+                    return acc;
+                }, {});
+            };
+        }
+
+        const asyncForEach = async (array, callback) => {
+            if (array && callback) {
+                for (let index = 0; index < array.length; index++) {
+                    await callback(array[index], index, array);
+                }
+            }
+        }
+    </script>
+
+    <style scoped>
+        body {
+            height: 100%;
+            -moz-osx-font-smoothing: grayscale;
+            -webkit-font-smoothing: antialiased;
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
+        }
+
+        #viewerHead {
+            text-align: left;
+            margin-top: 10px;
+            margin-left: 20px;
+            float: left;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        .details td {
+            width: 100px;
+        }
+
+        .MainMessage {
+            overflow: auto;
+            text-align: left;
+            background-color: #93dde3;
+            padding: 1%;
+            font-size: 14px;
+            border-radius: 25px;
+            border: solid 1.5px black;
+            margin-left: 20px;
+            margin-right: 20px;
+            margin-top: 50px;
+        }
+
+        .MessageHeader {
+            text-align: left;
+            font-style: italic;
+        }
+
+        .conversations {
+            word-wrap: break-word;
+            text-align: left;
+            background-color: #c8edf2;
+            padding: 1%;
+            font-size: 14px;
+            border-radius: 25px;
+            border: solid 1.5px black;
+            margin: 10px 20px 10px 100px;
+        }
+
+        #tags {
+            margin: 0;
+            padding: 0;
+        }
+
+        #tags li {
+            display: inline;
+            text-decoration: none;
+            padding: 0.2em 1em;
+        }
+
+        .inline {
+            display: inline-block;
+            margin-right: 20px;
+        }
+
+        ul {
+            list-style-type: none;
+            overflow: hidden;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #dddddd;
+            border-collapse: collapse;
+            text-align: center;
+            padding: 7px;
+        }
+
+        .underlined {
+            text-decoration: underline;
+            padding-left: 15px;
+            cursor: pointer;
+            color: #408cf0;
+        }
+
+        #tags {
+            margin: 0 0 -5px 2px;
+            display: inline-block;
+        }
+
+        .conversation {
+            margin-left: -40px;
+            margin-bottom: 60px;
+        }
+
+        .recordTags {
+            margin: -10px 0 20px 0;
+        }
+
+        .boldTags {
+            width: 110px;
+            display: inline-block;
+        }
+
+        .boldDue {
+            width: 110px;
+            display: inline-block;
+            margin-right: 15px;
+        }
+
+        .boldRequester {
+            width: 110px;
+            display: inline-block;
+            margin-right: 20px;
+        }
+
+        .boldCompany {
+            width: 50px;
+        }
+
+        .scrollableDiv {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            overflow-wrap: break-word;
+        }
+
+        /* loading image */
+        #loading {
+            width: 100%;
+            height: 100%;
+            top: 0px;
+            left: 0px;
+            position: fixed;
+            display: block;
+            opacity: 0.85;
+            background-color: #fff;
+            z-index: 99;
+            text-align: center;
+        }
+
+        #loading-content {
+            position: absolute;
+            top: 30%;
+            left: 45%;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .select-box {
+            margin-right: 60px;
+        }
+
+        .expand-button {
+            float: right;
+            margin-top: -26px;
+            margin-right: 30px;
+        }
+
+        .expand-image {
+            cursor: pointer;
+            margin-left: 10px;
+            margin-bottom: -3px;
+        }
+
+        .not-found {
+            margin-top: 20px;
+        }
+
+        .collapse-ticket-summary {
+            margin-left: 20px;
+            margin-right: 20px;
+        }
+
+        .el-collapse-item {
+            position: relative;
+        }
+
+        .more-btn {
+            float: right;
+            background-color: transparent;
+            border: none;
+            margin-right: .5rem;
+            i {
+                margin-left: 1rem;
+            }
+
+        }
+
+        .el-collapse-item__arrow {
+            float: left;
+            margin: 0 0.5rem;
+            width: 1rem;
+            text-align: center;
+        }
+    </style>
+
+</body>
+
+</html>
