@@ -87,16 +87,54 @@
                         {{record.created_at.substring(0, 10)}}
                         {{record.created_at.substring(11,19)}} {{record.requesterEmail}}
                     </div>
-                    <div class="scrollableDiv" v-html="record.description"></div>
+                    <div class="scrollableDiv">
+                        <br>
+                        {{record.description}}
+                        <br>
+                        <br>
+                        <div v-if="record.conversations && record.conversations[record.conversations.length-1] && record.conversations[record.conversations.length-1].attachments && record.conversations[record.conversations.length-1].attachments.length > 0">
+                            <strong>Attachments:</strong>
+                            <ul>
+                                <li v-for="attach in record.conversations[record.conversations.length-1].attachments" :key="attach.file_name">
+                                    <a :href="attach.content_url" target="_blank">{{attach.file_name}}Test</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+
+            <div v-if="record && record.subject" class="conversation">
+                <div v-if="record.conversations && record.conversations[0]">
+                    <ul>
+                        <li v-for="item in record.conversations" :key="item.id">
+                            <div v-if="item.id != record.conversations[record.conversations.length-1].id" class="conversations">
+                                <div class="MessageHeader">
+                                    {{item.created_at && item.created_at.length > 10 ? item.created_at.substring(0, 10) : ''}} {{item.created_at && item.created_at.length > 19 ? item.created_at.substring(11, 19) : ''}} -
+                                    {{item.author_email || record.requesterEmail}}
+                                </div>
+                                <br>
+                                <div class="scrollableDiv">
+                                    <div>
+                                        {{item.body}}
+                                    </div>
+                                    <br>
+                                    <div v-if="item.attachments && item.attachments[0]">
+                                        <strong>Attachments:</strong>
+                                        <ul>
+                                            <li v-for="attach in item.attachments" :key="attach.file_name">
+                                                <a :href="attach.content_url" target="_blank">{{attach.file_name}}</a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
                 </div>
             </div>
             
-
-
-
-
-
-
             <div v-if="!notFoundMessage" class="collapse-ticket-summary">
                 <el-row>
                     <el-collapse>
@@ -420,15 +458,18 @@
                     return result;
                 },
 
-                // async getConversation(ticketId, zendeskBaseUrl, funcCodeForComments) {
-                //     let result = 'N/A';
-                //     if (ticketId && ticketId !== 'null') {
-                //         const response = await axios.get(`${zendeskBaseUrl}/getCommentById?code=${funcCodeForComments}&itemId=${ticketId}`);
+                async getConversation(ticketId, zendeskBaseUrl, funcCodeForComments) {
+                    let result = 'N/A';
+                    if (ticketId && ticketId !== 'null') {
+                        const response = await axios.get(`${zendeskBaseUrl}/getCommentById?code=${funcCodeForComments}&itemId=${ticketId}`);
 
-                //         result = response.data ? response.data.comments : '';
-                //     }
-                //     return result;
-                // },
+                        result = response.data ? response.data.comments : '';
+                    }
+
+                    result && result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    //const resultWithoutLastItem = result.slice(0, -1);
+                    return result;
+                },
 
                 async getGroupName(groupId, zendeskBaseUrl, funcCode) {
                     let result = 'N/A';
@@ -481,7 +522,14 @@
                         let jsonIdForAssignee = result.assignee_id;
                         let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
                         result.strAgent = agentData.user ? agentData.user.name : '';
-                        //result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
+                        result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
+                        if (result.conversations) {
+                            for (let item of result.conversations) {
+                                jsonId = result.author_id;
+                                let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                result.author_email = userData.user ? userData.user.email : '';
+                            }
+                        }
                         //result.issueType = this.getIssueType(result, isStage);
                     }
                     
@@ -829,18 +877,18 @@
         }
 
         .boldTags {
-            width: 110px;
+            width: 50px;
             display: inline-block;
         }
 
         .boldDue {
-            width: 110px;
+            width: 90px;
             display: inline-block;
             margin-right: 15px;
         }
 
         .boldRequester {
-            width: 110px;
+            width: 150px;
             display: inline-block;
             margin-right: 20px;
         }
