@@ -202,42 +202,7 @@
         let zendesk_bcn = '';
         let zendesk_resellerName = '';
         let zendesk_ticketIdParam = '';
-
-        function setClientApiContext(xrm, resellerId, resellerName, newnavigationtab) {
-            let pageTitle = 'Zendesk';
-            console.log(`${pageTitle} - setClientApiContext started...`);
-            let im360_bcn = resellerId;
-            if (im360_bcn) {
-                zendesk_bcn = im360_bcn;
-                console.log(`${pageTitle} - BCN has been replaced with im360_bcn: ${im360_bcn}`);
-            }
-            console.log(`${pageTitle} - BCN: ${zendesk_bcn}`);
-            zendesk_resellerName = resellerName;
-            
-            if (newnavigationtab) {
-                console.log(`${pageTitle} - newnavigationtab: ${newnavigationtab.toString()}`);
-            } else {
-                console.log(`${pageTitle} - newnavigationtab is null`);
-            }
-            if (newnavigationtab && newnavigationtab.toString().startsWith('Freshdesk')) {
-                let paramsFromExtraqs = newnavigationtab.toString().split('_');
-                console.log(`${pageTitle} - paramsFromExtraqs: ${paramsFromExtraqs.join(',')}`);
-                zendesk_ticketIdParam = paramsFromExtraqs[1];
-                console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
-                console.log(`${pageTitle} - BCN before check: ${zendesk_bcn}`);
-                if (!zendesk_bcn && paramsFromExtraqs.length > 2) {
-                    let paramBCN = paramsFromExtraqs[2];
-                    console.log(`${pageTitle} - paramsFromExtraqs[2]: ${paramBCN}`);
-                    if (paramBCN) {
-                        zendesk_bcn = paramBCN;
-                        console.log(`${pageTitle} - BCN has been replaced by paramBCN: ${paramBCN}`);
-                    }
-                }
-            }
-        };
-
         let items = [];
-
         let record = {};
 
         Vue.component('v-select', VueSelect.VueSelect);
@@ -778,98 +743,12 @@
             if (!item) {
                 return null;
             }
-            item.strPriority = getPriority(item.priority);
-            item.strStatus = getStatus(item.status);
-            item.strSource = getSource(item.source);
+
             item.strProduct = item.custom_fields ? item.custom_fields.cf_product : '';  // not "product_id"
             item.strAgent = '';   // Agent
             item.strQueue = '';   // Group
             return item;
         }
-
-        const getPriority = (priority) => {
-            if (!priority) {
-                return "";
-            }
-            let result = "";
-            switch (priority) {
-                case 1:
-                    result = "Low";
-                    break;
-                case 2:
-                    result = "Medium";
-                    break;
-                case 3:
-                    result = "High";
-                    break;
-                case 4:
-                    result = "Urgent";
-                    break;
-            }
-            return result;
-        };
-
-        const getSource = (source) => {
-            if (!source) {
-                return "";
-            }
-            let result = "";
-            switch (source) {
-                case 1:
-                    result = "Email";
-                    break;
-                case 2:
-                    result = "Portal";
-                    break;
-                case 3:
-                    result = "Phone";
-                    break;
-                case 7:
-                    result = "Chat";
-                    break;
-                case 8:
-                    result = "Mobihelp";
-                    break;
-                case 9:
-                    result = "Feedback Widget";
-                    break;
-                case 10:
-                    result = "Outbound Email";
-                    break;
-            }
-            return result;
-        };
-
-        const getStatus = (status) => {
-            if (!status) {
-                return "";
-            }
-            let result = "";
-            switch (status) {
-                case 2:
-                    result = "Open";
-                    break;
-                case 3:
-                    result = "Pending";
-                    break;
-                case 4:
-                    result = "Resolved";
-                    break;
-                case 5:
-                    result = "Closed";
-                    break;
-                case 7:
-                    result = "Waiting for 3rd party";
-                    break;
-                case 8:
-                    result = "New";
-                    break;
-                case 9:
-                    result = "Waiting for maintenance";
-                    break;
-            }
-            return result;
-        };
 
         const groupBy = (key) => {
             return function group(array) {
