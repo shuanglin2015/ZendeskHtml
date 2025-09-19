@@ -64,7 +64,7 @@
                             <li v-for="item in record.tags" :key="item" v-html="item"></li>
                         </ul>
                     </div>
-                    
+
                    <table v-if="record && record.custom_fields" aria-describedby="ticketDetails" class="details">
                         <tr>
                             <th id="1">Agent</th>
@@ -85,35 +85,19 @@
                         <tr>
                             <td>{{record.strAgent}}</td>
                             <td>{{zendesk_bcn}}</td>
-                            <td>{{record.strAgent}}</td>
-                            <td>{{zendesk_bcn}}</td>
-                            <td>{{record.strAgent}}</td>
-                            <td>{{zendesk_bcn}}</td>
-                            <td>{{record.strAgent}}</td>
-                            <td>{{zendesk_bcn}}</td>
-                            <td>{{record.strAgent}}</td>
-                            <td>{{zendesk_bcn}}</td>
-                            <td>{{record.strAgent}}</td>
-                            <td>{{zendesk_bcn}}</td>
-                            <td>{{record.strAgent}}</td>
-                            <td>{{zendesk_bcn}}</td>
-                        </tr>
-                        <!-- <tr>
-                            <td>{{record.strAgent}}</td>
-                            <td>{{zendesk_bcn}}</td>
-                            <td>{{isStage ? record.custom_fields.34395814674196 : record.custom_fields.34691185003796}}</td>
-                            <td>{{isStage ? record.custom_fields.21077955613972 : record.custom_fields.20780455543956}}</td>
-                            <td>{{isStage ? record.custom_fields.31042462931476 : record.custom_fields.34698829065236}}</td>
-                            <td>{{isStage ? record.custom_fields.33937714050708 : record.custom_fields.34698770438676}}</td>
-                            <td>{{isStage ? record.custom_fields.35415435690388 : record.custom_fields.35228789545364}}</td>
-                            <td>{{isStage ? record.custom_fields.36211322445460 : record.custom_fields.35229050467860}}</td>
-                            <td>{{isStage ? record.custom_fields.31959436739604 : record.custom_fields.35138178531732}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value : record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value : record.custom_fields.find(f => f.id === 20780455543956) && record.custom_fields.find(f => f.id === 20780455543956).value}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 31042462931476) && record.custom_fields.find(f => f.id === 31042462931476).value : record.custom_fields.find(f => f.id === 34698829065236) && record.custom_fields.find(f => f.id === 34698829065236).value}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 33937714050708) && record.custom_fields.find(f => f.id === 33937714050708).value : record.custom_fields.find(f => f.id === 34698770438676) && record.custom_fields.find(f => f.id === 34698770438676).value}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 35415435690388) && record.custom_fields.find(f => f.id === 35415435690388).value : record.custom_fields.find(f => f.id === 35228789545364) && record.custom_fields.find(f => f.id === 35228789545364).value}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 36211322445460) && record.custom_fields.find(f => f.id === 36211322445460).value : record.custom_fields.find(f => f.id === 35229050467860) && record.custom_fields.find(f => f.id === 35229050467860).value}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 31959436739604) && record.custom_fields.find(f => f.id === 31959436739604).value : record.custom_fields.find(f => f.id === 35138178531732) && record.custom_fields.find(f => f.id === 35138178531732).value}}</td>
                             <td>{{record.status}}</td>
                             <td>{{record.priority}}</td>
                             <td>{{record.issueType}}</td>
-                            <td>{{isStage ? record.custom_fields.33478946088596 : record.custom_fields.35113832690964}}</td>
-                            <td>{{isStage ? record.custom_fields.33478981057940 : record.custom_fields.34693101133716}}</td>
-                        </tr> -->
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 33478946088596) && record.custom_fields.find(f => f.id === 33478946088596).value : record.custom_fields.find(f => f.id === 35113832690964) && record.custom_fields.find(f => f.id === 35113832690964).value}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 33478981057940) && record.custom_fields.find(f => f.id === 33478981057940).value : record.custom_fields.find(f => f.id === 34693101133716) && record.custom_fields.find(f => f.id === 34693101133716).value}}</td>
+                        </tr>
                     </table>
                     <br>
                 </div>
@@ -542,7 +526,7 @@
                         });
                     }
                     if (isAllNull) {
-                        return null;
+                        return 'null';
                     }
 
                     let isAllReviewAndUpdate = true;
@@ -661,7 +645,7 @@
                                 result.author_email = userData.user ? userData.user.email : '';
                             }
                         }
-                        //result.issueType = this.getIssueType(result, isStage);
+                        result.issueType = this.getIssueType(result, isStage);
                     }
                     
                     return result;
