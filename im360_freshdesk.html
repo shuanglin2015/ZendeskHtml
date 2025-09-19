@@ -64,7 +64,8 @@
                             <li v-for="item in record.tags" :key="item" v-html="item"></li>
                         </ul>
                     </div>
-                   <!-- <table aria-describedby="ticketDetails" class="details">
+                    
+                   <table v-if="record && record.custom_fields" aria-describedby="ticketDetails" class="details">
                         <tr>
                             <th id="1">Agent</th>
                             <th id="2">Ingram BCN#</th>
@@ -84,6 +85,22 @@
                         <tr>
                             <td>{{record.strAgent}}</td>
                             <td>{{zendesk_bcn}}</td>
+                            <td>{{record.strAgent}}</td>
+                            <td>{{zendesk_bcn}}</td>
+                            <td>{{record.strAgent}}</td>
+                            <td>{{zendesk_bcn}}</td>
+                            <td>{{record.strAgent}}</td>
+                            <td>{{zendesk_bcn}}</td>
+                            <td>{{record.strAgent}}</td>
+                            <td>{{zendesk_bcn}}</td>
+                            <td>{{record.strAgent}}</td>
+                            <td>{{zendesk_bcn}}</td>
+                            <td>{{record.strAgent}}</td>
+                            <td>{{zendesk_bcn}}</td>
+                        </tr>
+                        <!-- <tr>
+                            <td>{{record.strAgent}}</td>
+                            <td>{{zendesk_bcn}}</td>
                             <td>{{isStage ? record.custom_fields.34395814674196 : record.custom_fields.34691185003796}}</td>
                             <td>{{isStage ? record.custom_fields.21077955613972 : record.custom_fields.20780455543956}}</td>
                             <td>{{isStage ? record.custom_fields.31042462931476 : record.custom_fields.34698829065236}}</td>
@@ -96,8 +113,8 @@
                             <td>{{record.issueType}}</td>
                             <td>{{isStage ? record.custom_fields.33478946088596 : record.custom_fields.35113832690964}}</td>
                             <td>{{isStage ? record.custom_fields.33478981057940 : record.custom_fields.34693101133716}}</td>
-                        </tr>
-                    </table> -->
+                        </tr> -->
+                    </table>
                     <br>
                 </div>
 
