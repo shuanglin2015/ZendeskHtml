@@ -64,12 +64,40 @@
                             <li v-for="item in record.tags" :key="item" v-html="item"></li>
                         </ul>
                     </div>
-                   
-                    
-
-
-
-
+                   <!-- <table aria-describedby="ticketDetails" class="details">
+                        <tr>
+                            <th id="1">Agent</th>
+                            <th id="2">Ingram BCN#</th>
+                            <th id="3">Customer ID</th>
+                            <th id="4">Subscription ID</th>
+                            <th id="5">Domain</th>
+                            <th id="6">Support tier</th>
+                            <th id="7">Platform</th>
+                            <th id="8">Vendor</th>
+                            <th id="9">Country</th>
+                            <th id="10">Status</th>
+                            <th id="11">Priority</th>
+                            <th id="12">Issue type</th>
+                            <th id="13">Jira ticket ID</th>
+                            <th id="14">IMServ ticket ID </th>
+                        </tr>
+                        <tr>
+                            <td>{{record.strAgent}}</td>
+                            <td>{{zendesk_bcn}}</td>
+                            <td>{{isStage ? record.custom_fields.34395814674196 : record.custom_fields.34691185003796}}</td>
+                            <td>{{isStage ? record.custom_fields.21077955613972 : record.custom_fields.20780455543956}}</td>
+                            <td>{{isStage ? record.custom_fields.31042462931476 : record.custom_fields.34698829065236}}</td>
+                            <td>{{isStage ? record.custom_fields.33937714050708 : record.custom_fields.34698770438676}}</td>
+                            <td>{{isStage ? record.custom_fields.35415435690388 : record.custom_fields.35228789545364}}</td>
+                            <td>{{isStage ? record.custom_fields.36211322445460 : record.custom_fields.35229050467860}}</td>
+                            <td>{{isStage ? record.custom_fields.31959436739604 : record.custom_fields.35138178531732}}</td>
+                            <td>{{record.status}}</td>
+                            <td>{{record.priority}}</td>
+                            <td>{{record.issueType}}</td>
+                            <td>{{isStage ? record.custom_fields.33478946088596 : record.custom_fields.35113832690964}}</td>
+                            <td>{{isStage ? record.custom_fields.33478981057940 : record.custom_fields.34693101133716}}</td>
+                        </tr>
+                    </table> -->
                     <br>
                 </div>
 
@@ -169,15 +197,15 @@
     </div>
 
     <script>
-
-        var zendesk_bcn = '';
-        var zendesk_resellerName = '';
-        var zendesk_ticketIdParam = '';
+        let isStage = true;
+        let zendesk_bcn = '';
+        let zendesk_resellerName = '';
+        let zendesk_ticketIdParam = '';
 
         function setClientApiContext(xrm, resellerId, resellerName, newnavigationtab) {
-            var pageTitle = 'Zendesk';
+            let pageTitle = 'Zendesk';
             console.log(`${pageTitle} - setClientApiContext started...`);
-            var im360_bcn = resellerId;
+            let im360_bcn = resellerId;
             if (im360_bcn) {
                 zendesk_bcn = im360_bcn;
                 console.log(`${pageTitle} - BCN has been replaced with im360_bcn: ${im360_bcn}`);
@@ -191,13 +219,13 @@
                 console.log(`${pageTitle} - newnavigationtab is null`);
             }
             if (newnavigationtab && newnavigationtab.toString().startsWith('Freshdesk')) {
-                var paramsFromExtraqs = newnavigationtab.toString().split('_');
+                let paramsFromExtraqs = newnavigationtab.toString().split('_');
                 console.log(`${pageTitle} - paramsFromExtraqs: ${paramsFromExtraqs.join(',')}`);
                 zendesk_ticketIdParam = paramsFromExtraqs[1];
                 console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
                 console.log(`${pageTitle} - BCN before check: ${zendesk_bcn}`);
                 if (!zendesk_bcn && paramsFromExtraqs.length > 2) {
-                    var paramBCN = paramsFromExtraqs[2];
+                    let paramBCN = paramsFromExtraqs[2];
                     console.log(`${pageTitle} - paramsFromExtraqs[2]: ${paramBCN}`);
                     if (paramBCN) {
                         zendesk_bcn = paramBCN;
@@ -207,13 +235,13 @@
             }
         };
 
-        var items = [];
+        let items = [];
 
-        var record = {};
+        let record = {};
 
         Vue.component('v-select', VueSelect.VueSelect);
 
-        var app = new Vue({
+        let app = new Vue({
             el: '#app',
             data: {
                 pageTitle: 'Zendesk',
@@ -239,7 +267,7 @@
                     zendesk_bcn = localStorage.getItem('accountBCN');
                 }
                 if (!zendesk_bcn){
-                    var account = await this.getAccountBCN();
+                    let account = await this.getAccountBCN();
                     if (account) {
                         zendesk_bcn = account.im360_bcn;
                     }
@@ -248,8 +276,8 @@
                 this.showLoadingPage();
                 this.startTime = Date.now();
 
-                var funcCodeString = '';
-                var zendeskConfig = await this.getZendeskConfig();
+                let funcCodeString = '';
+                let zendeskConfig = await this.getZendeskConfig();
                 if (zendeskConfig) {
                     this.zendeskBaseUrl = zendeskConfig.im360_value;
                     funcCodeString = zendeskConfig.im360_value2;
@@ -259,12 +287,17 @@
                 }
                 console.log(`${this.pageTitle} - try to start getTickets function`);
 
-                var zendeskBaseUrl = this.zendeskBaseUrl;
-                var funcCodeArr = funcCodeString.toString().split(';;;;');
-                var funcCodeForTickets = funcCodeArr[2];
-                var funcCode = funcCodeArr[0];
-                var funcCodeForComments = funcCodeArr[1];  // TODO: 250910, add getComments function
-                var funcCodeForJsonById = funcCodeArr[3];
+                let zendeskBaseUrl = this.zendeskBaseUrl;
+                if (zendeskBaseUrl && zendeskBaseUrl.indexOf('ingrammicrosupport1700367431.zendesk.com') > -1) {
+                    isStage = true;
+                } else {
+                    isStage = false;
+                }
+                let funcCodeArr = funcCodeString.toString().split(';;;;');
+                let funcCodeForTickets = funcCodeArr[2];
+                let funcCode = funcCodeArr[0];
+                let funcCodeForComments = funcCodeArr[1];
+                let funcCodeForJsonById = funcCodeArr[3];
                 this.funcCodeForComments = funcCodeForComments;
                 this.funcCodeForTickets = funcCodeForTickets;
                 this.funcCode = funcCode;
@@ -277,7 +310,7 @@
                             zendesk_bcn = localStorage.getItem('accountBCN');
                         }
                         console.log(`${this.pageTitle} - zendesk_bcn: ${zendesk_bcn}`);
-                        var message = 'try to start getTickets function for the second time';
+                        let message = 'try to start getTickets function for the second time';
                         console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
                         if (zendesk_bcn) {
                             this.notFoundMessage = '';
@@ -286,12 +319,12 @@
                             this.notFoundMessage = "Account BCN is required to find related tickets.";
                             this.hideLoadingPage();
                         }
-                    }, 3000);
+                    }, 2000);
                 }
             },
             methods: {
                 async getZendeskConfig() {
-                    var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                    let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                          <entity name='im360_configuration'> \
                              <attribute name='im360_value'/> \
                              <attribute name='im360_value2'/> \
@@ -304,7 +337,7 @@
                          </entity> \
                          </fetch>";
 
-                    var pageTitle = this.pageTitle;
+                    let pageTitle = this.pageTitle;
                     return Xrm.WebApi.retrieveMultipleRecords("im360_configuration", "?fetchXml=" + fetchXml).then(
                         function success(result) {
                             if (result != null) {
@@ -323,9 +356,9 @@
                 },
 
                 async getAccountBCN() {
-                    var accountid = this.getValueParam();
+                    let accountid = this.getValueParam();
                     if (accountid) {
-                        var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                             <entity name='account'> \
                                 <attribute name='im360_bcn' /> \
                                 <filter type='and'> \
@@ -334,7 +367,7 @@
                             </entity> \
                             </fetch>";
 
-                        var pageTitle = this.pageTitle;
+                        let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
                             function success(result) {
                                 if (result != null) {
@@ -356,11 +389,11 @@
                 },
 
                 getValueParam() {
-                    var valueid = '';
-                    var vals = new Array();
+                    let valueid = '';
+                    let vals = new Array();
                     if (location.search != "") {
                         vals = location.search.substr(1).split("&");
-                        for (var i in vals) {
+                        for (let i in vals) {
                             vals[i] = vals[i].replace(/\+/g, " ").split("=");
                             if (vals[i][0].includes("id", 0)) {
                                 valueid = vals[i][1];
@@ -373,13 +406,13 @@
                 },
 
                 async getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets, selected, limit = '12') {
-                    var pageTitle = this.pageTitle;
+                    let pageTitle = this.pageTitle;
                     console.log(`${pageTitle} -  getTickets started...`);
 
-                    var response;
+                    let response;
                     try {
                         // TODO: change the limit value from the front end value user chose
-                        var fullUrl = `${zendeskBaseUrl}/searchByResellerId?limit=${limit}&code=${funcCodeForTickets}&resellerId=${zendesk_bcn}`;
+                        let fullUrl = `${zendeskBaseUrl}/searchByResellerId?limit=${limit}&code=${funcCodeForTickets}&resellerId=${zendesk_bcn}`;
                         console.log(fullUrl);
                         response = await axios.get(fullUrl);
                     } catch (err) {
@@ -399,7 +432,7 @@
                                 });
                             }
                             this.selectedIdAndSubject = selected;
-                            var ticketId = getTicketId(this.selectedIdAndSubject);
+                            let ticketId = getTicketId(this.selectedIdAndSubject);
                             console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
                             if (zendesk_ticketIdParam) {
                                 ticketId = zendesk_ticketIdParam;
@@ -408,7 +441,7 @@
                             console.log(`${pageTitle} - ticketId: ${ticketId}`);
                             this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId);
                             if (this.record) {
-                                var subjectGet = this.record['subject'];
+                                let subjectGet = this.record['subject'];
                                 this.selectedIdAndSubject = `${ticketId}.${subjectGet}`;
                                 console.log(`${pageTitle} - subjectGet: ${subjectGet}`);
                             }
@@ -471,6 +504,87 @@
                     return result;
                 },
 
+                getIssueType(result, isStageInstance) {
+                    let issueType = '';
+                    let issueTypeIds = [34811885834260, 34811954493716, 34812292526612, 34812336427028, 34699417128340];
+                    if (isStageInstance) {
+                       issueTypeIds = [34812503928980, 34812521159316, 38816279478932, 34812589895316, 34812614350228, 34750532695700];         
+                    }
+
+                    let isAllNull = true;
+                    if (result && result.custom_fields) {
+                        const customFields = result.custom_fields;
+                        customFields.forEach(field => {
+                            issueTypeIds.forEach(id => {
+                                if (field.id === id) {
+                                    if (field.value !== null) {
+                                        isAllNull = false
+                                    }
+                                }
+                            });
+                        });
+                    }
+                    if (isAllNull) {
+                        return null;
+                    }
+
+                    let isAllReviewAndUpdate = true;
+                    let reviewAndUpdate = 'platform_review_and_update';
+                    if (result && result.custom_fields) {
+                        const customFields = result.custom_fields;
+                        customFields.forEach(field => {
+                            issueTypeIds.forEach(id => {
+                                if (field.id === id) {
+                                    if (field.value !== reviewAndUpdate) {
+                                        isAllReviewAndUpdate = false
+                                    }
+                                }
+                            });
+                        });
+                    }
+                    if (isAllReviewAndUpdate) {
+                        return reviewAndUpdate;
+                    } 
+
+                    //3. one of the fields set to a value different from #1 and #2 -> display this value in Issue Type
+                    if (result && result.custom_fields) {
+                        const customFields = result.custom_fields;
+                        customFields.forEach(field => {
+                            issueTypeIds.forEach(id => {
+                                if (field.id === id) {
+                                    if (field.value !== null && field.value !== reviewAndUpdate) {
+                                        issueType = field.value;
+                                    }
+                                }
+                            });
+                        });
+                    }
+
+                    // >1 field set to a value different from #1 and #2 -> display error (should not happen) and >1 values
+                    if (issueType && issueType.length > 0) {
+                        let count = 0;
+                        if (result && result.custom_fields) {
+                            const customFields = result.custom_fields;
+                            customFields.forEach(field => {
+                                issueTypeIds.forEach(id => {
+                                    if (field.id === id) {
+                                        if (field.value !== null && field.value !== reviewAndUpdate) {
+                                            count++;
+                                        }
+                                    }
+                                });
+                            });
+                        }
+                        if (count > 1) {
+                            console.error(`${this.pageTitle} - More than one Issue Type values found for ticket ${result.id}`);
+                            issueType = 'Error - multiple issue types found';
+                        }
+                    }
+
+                    return issueType;
+
+                },
+
                 async getGroupName(groupId, zendeskBaseUrl, funcCode) {
                     let result = 'N/A';
                     if (groupId && groupId !== 'null') {
@@ -501,7 +615,7 @@
                     console.log(fullUrl);
                     const response = await axios.get(fullUrl);
 
-                    var result = response.data;
+                    let result = response.data;
                     if (result) {
                         result = convertValue(result);
 
@@ -573,7 +687,7 @@
                 },
 
                 getGroupByMonthTickets(ticketSummaryParam) {
-                    var result = '';
+                    let result = '';
                     try {
                         const groupByMonth = groupBy("yearAndMonth");
                         const groupedTickets = groupByMonth(ticketSummaryParam);
@@ -593,7 +707,7 @@
                 },
 
                 async getGroupByQueueTickets(zendeskBaseUrl, funcCode, ticketSummaryParam) {
-                    var result = '';
+                    let result = '';
                     try {
                         const groupByQueue = groupBy("groupId");
                         const queueTickets = groupByQueue(ticketSummaryParam);
@@ -601,7 +715,7 @@
                             if (result && result.length > 0) {
                                 result += '<br>';
                             }
-                            var keyName = await this.getGroupName(key, zendeskBaseUrl, funcCode);
+                            let keyName = await this.getGroupName(key, zendeskBaseUrl, funcCode);
                             result += keyName;
                             result += ': ';
                             result += `<b>${queueTickets[key]}</b>`;
@@ -615,11 +729,11 @@
 
                 async getAverageResolveTime(zendeskBaseUrl, funcCode, itemsParam) {
                     const result = [];
-                    var finalResult = 0;
+                    let finalResult = 0;
 
                     try {
                         await asyncForEach(itemsParam, async item => {
-                            var ticket = await this.getTicket(zendeskBaseUrl, funcCode, item.id);
+                            let ticket = await this.getTicket(zendeskBaseUrl, funcCode, item.id);
                             if (ticket.status === 4 || ticket.status === 5) {
                                 const createdAt = ticket.created_at;
                                 const closedAt = ticket.stats.closed_at ? ticket.stats.closed_at : ticket.stats.resolved_at;
@@ -633,7 +747,7 @@
                         });
 
                         if (result.length > 0) {
-                            var sum = 0;
+                            let sum = 0;
                             result.forEach(item => {
                                 sum += item;
                             });
