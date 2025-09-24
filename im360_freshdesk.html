@@ -419,13 +419,16 @@
                             if (this.ticketSummary.length > 0) {
                                 this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
                                 this.groupByQueueTickets = await this.getGroupByQueueTickets(zendeskBaseUrl, funcCode, this.ticketSummary);
-                                const averageTime = await this.getAverageResolveTime(zendeskBaseUrl, funcCode, items);
+                                const averageTime = await this.getAverageResolveTime(zendeskBaseUrl, funcCode, items, this.funcCodeForJsonById);
+
                                 const averageDays = Math.floor(averageTime / 24);
                                 const averageHours = Math.round(averageTime % 24);
+                                let averageResolvedTime = '';
                                 if (averageDays > 0) {
-                                    this.averageResolveTime = `<b>${averageDays}</b> days `;
+                                    averageResolvedTime = `<b>${averageDays}</b> days `;
                                 }
-                                this.averageResolveTime += `<b>${averageHours}</b> hours.`;
+                                averageResolvedTime += `<b>${averageHours}</b> hours.`;
+                                this.averageResolveTime = averageResolvedTime;
                             }
                         }
                     } else {
@@ -693,21 +696,26 @@
                     return result;
                 },
 
-                async getAverageResolveTime(zendeskBaseUrl, funcCode, itemsParam) {
+                async getAverageResolveTime(zendeskBaseUrl, funcCode, itemsParam, funcCodeForJsonById) {
                     const result = [];
                     let finalResult = 0;
+                    let jsonId = 'metrics';
 
                     try {
-                        await asyncForEach(itemsParam, async item => {
-                            let ticket = await this.getTicket(zendeskBaseUrl, funcCode, item.id);
-                            if (ticket.status === 4 || ticket.status === 5) {
+                        await asyncForEach(itemsParam, async ticket => {
+                            if (ticket.status === 'solved' || ticket.status === 'closed') {
                                 const createdAt = ticket.created_at;
-                                const closedAt = ticket.stats.closed_at ? ticket.stats.closed_at : ticket.stats.resolved_at;
-                                if (closedAt) {
-                                    const utcCreated = getUTC(createdAt, item.id);
-                                    const utcClosed = getUTC(closedAt);
-                                    const hours = Math.floor(utcClosed - utcCreated) / (1000 * 60 * 60);
-                                    result.push(hours);
+                                
+                                let jsonPath = `tickets/${ticket.id}`;
+                                let metricsData = ticket.id ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) : '';
+                                if (metricsData && metricsData.ticket_metric) {
+                                    const closedAt = metricsData.ticket_metric.solved_at;
+                                    if (closedAt) {
+                                        const utcCreated = getUTC(createdAt, ticket.id);
+                                        const utcClosed = getUTC(closedAt);
+                                        const hours = Math.floor(utcClosed - utcCreated) / (1000 * 60 * 60);
+                                        result.push(hours);
+                                    }
                                 }
                             }
                         });
