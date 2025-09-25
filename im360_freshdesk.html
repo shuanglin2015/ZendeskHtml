@@ -60,9 +60,10 @@
                     
                     <div v-if="record.tags && record.tags[0]" class="recordTags">
                         <strong class="boldTags">Tags:</strong>
-                        <ul id="tags">
+                        {{record.tags.length > 0 ? record.tags : ''}}
+                        <!-- <ul id="tags">
                             <li v-for="item in record.tags" :key="item" v-html="item"></li>
-                        </ul>
+                        </ul> -->
                     </div>
 
                    <table v-if="record && record.custom_fields" aria-describedby="ticketDetails" class="details">
@@ -180,10 +181,10 @@
                                 </div>
                                 <div style="margin-left: 20px;" v-html="groupByMonthTickets"></div>
 
-                                <div>
+                                <!-- <div>
                                     Total tickets group by Queue:
                                 </div>
-                                <div style="margin-left: 20px;" v-html="groupByQueueTickets"></div>
+                                <div style="margin-left: 20px;" v-html="groupByQueueTickets"></div> -->
 
                                 <div v-if="averageResolveTime">
                                     Average time to resolve ticket:
@@ -418,7 +419,7 @@
                             this.ticketSummary = this.getTicketSummary(items);
                             if (this.ticketSummary.length > 0) {
                                 this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
-                                this.groupByQueueTickets = await this.getGroupByQueueTickets(zendeskBaseUrl, funcCode, this.ticketSummary);
+                                //this.groupByQueueTickets = await this.getGroupByQueueTickets(zendeskBaseUrl, funcCode, this.ticketSummary);
                                 const averageTime = await this.getAverageResolveTime(zendeskBaseUrl, funcCode, items, this.funcCodeForJsonById);
 
                                 const averageDays = Math.floor(averageTime / 24);
@@ -554,25 +555,25 @@
 
                 },
 
-                async getGroupName(groupId, zendeskBaseUrl, funcCode) {
-                    let result = 'N/A';
-                    if (groupId && groupId !== 'null') {
-                        const response = await axios.get(`${zendeskBaseUrl}/getDataById?code=${funcCode}&category=groups&itemId=${groupId}`);
+                // async getGroupName(groupId, zendeskBaseUrl, funcCode) {
+                //     let result = 'N/A';
+                //     if (groupId && groupId !== 'null') {
+                //         const response = await axios.get(`${zendeskBaseUrl}/getDataById?code=${funcCode}&category=groups&itemId=${groupId}`);
 
-                        result = response.data ? response.data.name : '';
-                    }
-                    return result;
-                },
+                //         result = response.data ? response.data.name : '';
+                //     }
+                //     return result;
+                // },
 
-                async getAgentName(responderId, zendeskBaseUrl, funcCode) {
-                    let result = '';
-                    if (responderId && responderId !== 'null') {
-                        const response = await axios.get(`${zendeskBaseUrl}/getDataById?code=${funcCode}&category=agents&itemId=${responderId}`);
+                // async getAgentName(responderId, zendeskBaseUrl, funcCode) {
+                //     let result = '';
+                //     if (responderId && responderId !== 'null') {
+                //         const response = await axios.get(`${zendeskBaseUrl}/getDataById?code=${funcCode}&category=agents&itemId=${responderId}`);
 
-                        result = response.data && response.data.contact ? response.data.contact.name : '';
-                    }
-                    return result;
-                },
+                //         result = response.data && response.data.contact ? response.data.contact.name : '';
+                //     }
+                //     return result;
+                // },
 
                 refresh() {
                     this.showLoadingPage();
@@ -599,6 +600,7 @@
                         let jsonId = result.requester_id;
                         let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
                         result.requesterEmail = userData.user ? userData.user.email : '';
+
                         //result.strQueue = await this.getGroupName(result.group_id, zendeskBaseUrl, this.funcCode);
                         //result.strAgent = await this.getAgentName(result.responder_id, zendeskBaseUrl, this.funcCode);
 
@@ -675,26 +677,26 @@
                     return result;
                 },
 
-                async getGroupByQueueTickets(zendeskBaseUrl, funcCode, ticketSummaryParam) {
-                    let result = '';
-                    try {
-                        const groupByQueue = groupBy("groupId");
-                        const queueTickets = groupByQueue(ticketSummaryParam);
-                        await asyncForEach(Object.keys(queueTickets), async key => {
-                            if (result && result.length > 0) {
-                                result += '<br>';
-                            }
-                            let keyName = await this.getGroupName(key, zendeskBaseUrl, funcCode);
-                            result += keyName;
-                            result += ': ';
-                            result += `<b>${queueTickets[key]}</b>`;
-                        });
-                    } catch (err) {
-                        console.error(`${this.pageTitle} - getGroupByQueueTickets error`);
-                        this.hideLoadingPage();
-                    }
-                    return result;
-                },
+                // async getGroupByQueueTickets(zendeskBaseUrl, funcCode, ticketSummaryParam) {
+                //     let result = '';
+                //     try {
+                //         const groupByQueue = groupBy("groupId");
+                //         const queueTickets = groupByQueue(ticketSummaryParam);
+                //         await asyncForEach(Object.keys(queueTickets), async key => {
+                //             if (result && result.length > 0) {
+                //                 result += '<br>';
+                //             }
+                //             let keyName = await this.getGroupName(key, zendeskBaseUrl, funcCode);
+                //             result += keyName;
+                //             result += ': ';
+                //             result += `<b>${queueTickets[key]}</b>`;
+                //         });
+                //     } catch (err) {
+                //         console.error(`${this.pageTitle} - getGroupByQueueTickets error`);
+                //         this.hideLoadingPage();
+                //     }
+                //     return result;
+                // },
 
                 async getAverageResolveTime(zendeskBaseUrl, funcCode, itemsParam, funcCodeForJsonById) {
                     const result = [];
@@ -879,20 +881,21 @@
         }
 
         .boldTags {
-            width: 50px;
+            width: 40px;
             display: inline-block;
+            margin-right: 0px;
         }
 
         .boldDue {
             width: 90px;
             display: inline-block;
-            margin-right: 15px;
+            margin-right: 0px;
         }
 
         .boldRequester {
             width: 150px;
             display: inline-block;
-            margin-right: 20px;
+            margin-right: 0px;
         }
 
         .boldCompany {
