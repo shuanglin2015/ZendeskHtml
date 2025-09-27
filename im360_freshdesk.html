@@ -126,7 +126,7 @@
                             <strong>Attachments:</strong>
                             <ul>
                                 <li v-for="attach in record.conversations[record.conversations.length-1].attachments" :key="attach.file_name">
-                                    <a :href="attach.content_url" target="_blank">{{attach.file_name}}Test</a>
+                                    <a :href="attach.content_url" target="_blank">{{attach.file_name}}</a>
                                 </li>
                             </ul>
                         </div>
@@ -164,12 +164,31 @@
                     </ul>
                 </div>
             </div>
+
+            <div v-if="record && record.subject">
+                <div v-if="record && record.ticket_metric" class="recordTags">
+                    <strong class="boldInMinutes">Ticket Metrics </strong>
+                </div>
+                <div v-if="record && record.ticket_metric && record.ticket_metric.reply_time_in_minutes" class="recordTagsShort">
+                    First reply time in minutes:
+                    {{record.ticket_metric.reply_time_in_minutes.calendar ? record.ticket_metric.reply_time_in_minutes.calendar : '0'}}
+                </div>
+                <div v-if="record && record.ticket_metric && record.ticket_metric.requester_wait_time_in_minutes" class="recordTagsShort">
+                    Requester wait time in minutes:
+                    {{record.ticket_metric.requester_wait_time_in_minutes.calendar ? record.ticket_metric.requester_wait_time_in_minutes.calendar : '0'}}
+                </div>
+
+                <div v-if="record && record.ticket_metric && record.ticket_metric.full_resolution_time_in_minutes" class="recordTagsShort">
+                    Resolution time in minutes:
+                    {{record.ticket_metric.full_resolution_time_in_minutes.calendar ? record.ticket_metric.full_resolution_time_in_minutes.calendar : '0'}}
+                </div>
+                <br>
+            </div>
             
             <div v-if="!notFoundMessage" class="collapse-ticket-summary">
                 <el-row>
                     <el-collapse>
                         <el-collapse accordion>
-                            <!--CM-1348 Added by Lin on 17 Feb 2021-->
                             <el-collapse-item>
                                 <template slot="title">
                                     Summary Of Tickets
@@ -372,7 +391,7 @@
                     return valueid;
                 },
 
-                async getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets, selected, limit = '12') {
+                async getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets, selected, limit = '10') {
                     let pageTitle = this.pageTitle;
                     console.log(`${pageTitle} -  getTickets started...`);
 
@@ -394,9 +413,22 @@
                             if (!selected) {
                                 selected = `${items[0]['id']}.${items[0]['subject']}`;
                                 this.selectOptions.length = 0;
+                                //await asyncForEach(items, async item => {
+                                    //this.selectOptions.push(`${item.id}.${item.subject}`);
+                                    // let jsonId = 'metrics';
+                                    // let jsonPath = `tickets/${item.id}`;
+                                    // let metricsData = item.id ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                    // if (metricsData) {
+                                    //     item.ticket_metric = metricsData.ticket_metric;
+                                    // }
+                                //})
                                 items.forEach(item => {
                                     this.selectOptions.push(`${item.id}.${item.subject}`);
                                 });
+                                if (this.selectOptions.length > 0) {
+                                    let newOption = 'View more tickets...';
+                                    this.selectOptions.push(newOption);
+                                }
                             }
                             this.selectedIdAndSubject = selected;
                             let ticketId = getTicketId(this.selectedIdAndSubject);
@@ -411,6 +443,15 @@
                                 let subjectGet = this.record['subject'];
                                 this.selectedIdAndSubject = `${ticketId}.${subjectGet}`;
                                 console.log(`${pageTitle} - subjectGet: ${subjectGet}`);
+
+                                // this is working? 250927 - yes, only this is working
+                                let jsonId = 'metrics';
+                                let jsonPath = `tickets/${ticketId}`;
+                                let metricsData = ticketId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                if (metricsData) {
+                                    this.record.ticket_metric = metricsData.ticket_metric;
+                                }
+
                             }
                         } else {
                             record = null;
@@ -447,8 +488,22 @@
                 },
 
                 async setSelected() {
-                    const ticketId = getTicketId(this.selectedIdAndSubject);
-                    this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId);
+                    if (this.selectedIdAndSubject === 'View more tickets...') {
+                        this.showLoadingPage();
+                        // refresh:
+                        this.getTickets(this.zendeskBaseUrl, this.funcCode, this.funcCodeForTickets, '', 100, this.hideLoadingPage);
+                        return;
+                    } else {
+                        const ticketId = getTicketId(this.selectedIdAndSubject);
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId);
+                        let jsonId = 'metrics';
+                        let jsonPath = `tickets/${ticketId}`;
+                        let metricsData = ticketId ? await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                        if (metricsData) {
+                            this.record.ticket_metric = metricsData.ticket_metric;
+                        }
+                        this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
+                    }
                 },
 
                 async getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) {
@@ -796,6 +851,15 @@
             font-size: 14px;
         }
 
+        #viewerHeadOtherInfo {
+            text-align: left;
+            margin-top: 10px;
+            margin-left: 20px;
+            float: left;
+            width: 100%;
+            font-size: 14px;
+        }
+
         .details td {
             width: 100px;
         }
@@ -880,6 +944,10 @@
             margin: -10px 0 20px 0;
         }
 
+        .recordTagsShort {
+            margin-left: 40px;
+        }
+
         .boldTags {
             width: 40px;
             display: inline-block;
@@ -896,6 +964,12 @@
             width: 150px;
             display: inline-block;
             margin-right: 0px;
+        }
+
+        .boldInMinutes {
+            width: 210px;
+            display: inline-block;
+            margin-left: 20px;
         }
 
         .boldCompany {
