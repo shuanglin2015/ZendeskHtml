@@ -413,15 +413,6 @@
                             if (!selected) {
                                 selected = `${items[0]['id']}.${items[0]['subject']}`;
                                 this.selectOptions.length = 0;
-                                //await asyncForEach(items, async item => {
-                                    //this.selectOptions.push(`${item.id}.${item.subject}`);
-                                    // let jsonId = 'metrics';
-                                    // let jsonPath = `tickets/${item.id}`;
-                                    // let metricsData = item.id ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                                    // if (metricsData) {
-                                    //     item.ticket_metric = metricsData.ticket_metric;
-                                    // }
-                                //})
                                 items.forEach(item => {
                                     this.selectOptions.push(`${item.id}.${item.subject}`);
                                 });
@@ -444,14 +435,13 @@
                                 this.selectedIdAndSubject = `${ticketId}.${subjectGet}`;
                                 console.log(`${pageTitle} - subjectGet: ${subjectGet}`);
 
-                                // this is working? 250927 - yes, only this is working
                                 let jsonId = 'metrics';
                                 let jsonPath = `tickets/${ticketId}`;
                                 let metricsData = ticketId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
                                 if (metricsData) {
                                     this.record.ticket_metric = metricsData.ticket_metric;
                                 }
-
+                                this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
                             }
                         } else {
                             record = null;
