@@ -274,7 +274,8 @@
                 console.log(`${this.pageTitle} - try to start getTickets function`);
 
                 let zendeskBaseUrl = this.zendeskBaseUrl;
-                if (zendeskBaseUrl && zendeskBaseUrl.indexOf('ingrammicrosupport1700367431.zendesk.com') > -1) {
+                let stageApi = 'crm-zendesk-api.azurewebsites.net';
+                if (zendeskBaseUrl && zendeskBaseUrl.indexOf(stageApi) > -1) {
                     isStage = true;
                 } else {
                     isStage = false;
