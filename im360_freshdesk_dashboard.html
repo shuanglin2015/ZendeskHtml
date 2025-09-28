@@ -1,7 +1,7 @@
-<html><head><meta></head><body onfocusout="parent.setEmailRange();" style="overflow-wrap: break-word;">﻿
+<!DOCTYPE html>
+<html>
 
-
-
+<head>
     <script src="ClientGlobalContext.js.aspx"></script>
     <script src="im360_common.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
@@ -15,13 +15,13 @@
     <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/20.2.7/css/dx.common.css">
     <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/20.2.7/css/dx.light.css">
     <script type="text/javascript" src="https://cdn3.devexpress.com/jslib/20.2.7/js/dx.web.js"></script>
+</head>
 
-
-    
-        <div id="app" class="datagrid">
+    <body>
+        <div id="app" class='datagrid'>
             <div v-if="showLoading" id="loading">
                 <div id="loading-content">
-                    <img src="im360_loading.gif">
+                    <img src="im360_Loading.gif" />
                 </div>
             </div>
             <div id="gridContainer"></div>
@@ -50,7 +50,7 @@
                         var baseUrl = freshdeskConfig.im360_value;
                         var funcCode = freshdeskConfig.im360_value2;
                         var funcCodeArr = funcCode.toString().split(';;;;');
-                        var firstFuncCode = funcCodeArr[0];
+                        var firstFuncCode = funcCodeArr[2];
                         this.freshdeskUrl = `${baseUrl}/searchByResellerId?code=${firstFuncCode}&resellerId=`;
 
                         var im360_value3 = freshdeskConfig.im360_value3;
@@ -70,26 +70,29 @@
 
                     if (this.freshdeskUrl) {
                         console.log(`${this.pageTitle} - freshdeskUrl: ${this.freshdeskUrl}`);
-                        var ticketsArr = [];
-                        accountsData = await this.getAccountsData();
+                        //var ticketsArr = [];
+                        //accountsData = await this.getAccountsData();
 
-                        await asyncForEach(accountsData, async account => {
-                            var tickets = await this.getTickets(account);
-                            if (tickets.length > 0) {
-                                ticketsArr = ticketsArr.concat(tickets);
-                            }
-                        });
+                        var accountBCN = '20666904';
+                        var tickets = await this.getTickets(accountBCN);
 
-                        console.log(`${this.pageTitle} - ticketsArr: ${JSON.stringify(ticketsArr)}`);
-                        this.generateDatagrid(ticketsArr); 
+                        // await asyncForEach(accountsData, async account => {
+                        //     var tickets = await this.getTickets(account);
+                        //     if (tickets.length > 0) {
+                        //         ticketsArr = ticketsArr.concat(tickets);
+                        //     }
+                        // });
+
+                        console.log(`${this.pageTitle} - tickets: ${JSON.stringify(tickets)}`);
+                        this.generateDatagrid(tickets); 
                     } else {
-                        console.error(`${this.pageTitle} - Freshdesk API URL is null`);
+                        console.error(`${this.pageTitle} - Zendesk API URL is null`);
                     }
 
                 },
                 methods: {
                     async getFreshdeskConfig() {
-                        var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                          <entity name='im360_configuration'> \
                              <attribute name='im360_value'/> \
                              <attribute name='im360_value2'/> \
@@ -108,7 +111,7 @@
                                 if (result != null) {
                                     return result.entities[0];
                                 } else {
-                                    console.error(`${pageTitle} - Cannot get Freshdesk configuration.`);
+                                    console.error(`${pageTitle} - Cannot get Zendesk configuration.`);
                                     return null;
                                 }
                             },
@@ -120,43 +123,45 @@
                         );
                     },
 
-                    async getAccountsData() {
-                        var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                              <entity name = 'account' > \
-                                <attribute name='accountid' /> \
-                                <attribute name='name' /> \
-                                <attribute name='im360_armid' /> \
-                                <filter type='and'> \
-                                  <condition attribute='im360_cloudowner' operator='eq-userid' /> \
-                                  <condition attribute='im360_armid' operator='not-null' /> \
-                                </filter> \
-                                <order attribute='name' descending='false' /> \
-                              </entity > \
-                            </fetch >";
 
-                        var pageTitle = this.pageTitle;
-                        return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
-                            function success(result) {
-                                if (result != null) {
-                                    console.log(`${pageTitle} - accounts result: ${JSON.stringify(result)}`);
-                                    return result.entities;
-                                } else {
-                                    console.error(`${pageTitle} - accounts data is empty.`);
-                                    return null;
-                                }
-                            },
-                            function (error) {
-                                console.error(`${pageTitle} - ${error.message}`);
-                                this.hideLoadingPage();
-                                return null;
-                            }
-                        );
-                    },
 
-                    async getTickets(account) {
+                    // async getAccountsData() {
+                    //     var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                    //           <entity name = 'account' > \
+                    //             <attribute name='accountid' /> \
+                    //             <attribute name='name' /> \
+                    //             <attribute name='im360_armid' /> \
+                    //             <filter type='and'> \
+                    //               <condition attribute='im360_cloudowner' operator='eq-userid' /> \
+                    //               <condition attribute='im360_armid' operator='not-null' /> \
+                    //             </filter> \
+                    //             <order attribute='name' descending='false' /> \
+                    //           </entity > \
+                    //         </fetch >";
+
+                    //     var pageTitle = this.pageTitle;
+                    //     return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
+                    //         function success(result) {
+                    //             if (result != null) {
+                    //                 console.log(`${pageTitle} - accounts result: ${JSON.stringify(result)}`);
+                    //                 return result.entities;
+                    //             } else {
+                    //                 console.error(`${pageTitle} - accounts data is empty.`);
+                    //                 return null;
+                    //             }
+                    //         },
+                    //         function (error) {
+                    //             console.error(`${pageTitle} - ${error.message}`);
+                    //             this.hideLoadingPage();
+                    //             return null;
+                    //         }
+                    //     );
+                    // },
+
+                    async getTickets(accountBCN) {
                         var results = [];
 
-                        var resellerId = account.im360_armid;
+                        var resellerId = accountBCN;
 
                         var response;
                         try {
@@ -164,7 +169,7 @@
                             console.log(fullUrl);
                             response = await axios.get(fullUrl);
                         } catch (err) {
-                            console.error(`${this.pageTitle} - Freshdesk API error`);
+                            console.error(`${this.pageTitle} - Zendesk API error`);
                         }
 
                         if (response && response.data) {
@@ -177,8 +182,8 @@
                                             Subject: item.subject,
                                             Status: this.getStatus(item.status),
                                             Priority: this.getPriority(item.priority),
-                                            'CMP Account ID': account.im360_armid,
-                                            'Account Name': account.name,
+                                            'CMP Account ID': '',
+                                            'Account Name': '',
                                             X_Days_Old: item.created_at ? Math.round((new Date() - Date.parse(item.created_at.substring(0, 10))) / (1000 * 3600 * 24)) : '',
                                             Created_at: item.created_at ? item.created_at.substring(0, 10) : ''
                                         };
@@ -189,7 +194,7 @@
                                 });
                             } 
                         } else {
-                            console.error(`${this.pageTitle} - Get Freshdesk tickets error`);
+                            console.error(`${this.pageTitle} - Get Zendesk tickets error`);
                         }
                         this.hideLoadingPage();
                         return results;
@@ -197,7 +202,7 @@
 
                     generateDatagrid(ticketsArr) {
                         var pageTitle = this.pageTitle;
-                        var getAccountIdByName = this.getAccountIdByName;
+                        //var getAccountIdByName = this.getAccountIdByName;
                         var appId = this.appId;
                         var formId = this.formId;
 
@@ -231,12 +236,14 @@
                             onSelectionChanged: function (selectedItems) {
                                 var data = selectedItems.selectedRowsData[0];
                                 console.log(`${pageTitle} - onSelectionChanged -> data: ${JSON.stringify(data)}`);
-                                var accountId = getAccountIdByName(data['Account Name']);
+                                //var accountId = getAccountIdByName(data['Account Name']);
+                                //var accountId = getAccountIdByBCN(data['Account Name']);
+                                var accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';
                                 var ticketId = data.TicketId;
                                 var url = window.location.protocol + "//" + window.location.host + "/";
                                 var fieldName = 'im360_newnavigationtab';
-                                var tabName = 'Freshdesk';    
-                                var selectedResellerId = data['CMP Account ID'];
+                                var tabName = 'Support Tickets';    
+                                var selectedResellerId = data['CMP Account ID'].toString();
                                 var fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                 console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
                                 window.open(fullUrl, '_blank');
@@ -336,7 +343,7 @@
         </script>
 
 
-        <style scoped="">
+        <style scoped>
             body {
                 height: 100%;
                 -moz-osx-font-smoothing: grayscale;
@@ -375,7 +382,6 @@
             }
         </style>
 
-    
+    </body>
 
-
-</body></html>
+</html>
