@@ -1,0 +1,381 @@
+<html><head><meta></head><body onfocusout="parent.setEmailRange();" style="overflow-wrap: break-word;">﻿
+
+
+
+    <script src="ClientGlobalContext.js.aspx"></script>
+    <script src="im360_common.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/jquery@3.1.1/dist/jquery.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/element-ui@2.2.0/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui@2.2.0/lib/index.js"></script>
+
+    <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/20.2.7/css/dx.common.css">
+    <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/20.2.7/css/dx.light.css">
+    <script type="text/javascript" src="https://cdn3.devexpress.com/jslib/20.2.7/js/dx.web.js"></script>
+
+
+    
+        <div id="app" class="datagrid">
+            <div v-if="showLoading" id="loading">
+                <div id="loading-content">
+                    <img src="im360_loading.gif">
+                </div>
+            </div>
+            <div id="gridContainer"></div>
+        </div>
+
+        <script>
+            var app = new Vue({
+                el: '#app',
+                data: {
+                    pageTitle: 'FreshdeskDashboard',
+                    showLoading: true,
+                    freshdeskUrl: '',
+                    // default appId value when Configuration FreshdeskAPI -> Value3 is not configured
+                    appId: '80ffd75d-69ec-ea11-a817-000d3a8bdb91',
+                    // default formId value when Configuration FreshdeskAPI -> Value4 is not configured
+                    formId: 'c822d616-dce1-4671-a5ac-a9c3cadb5c2d',
+                    startTime: Date.now(),
+                    accountsData: []
+                },
+                async mounted() {
+                    this.showLoadingPage();
+                    this.startTime = Date.now();
+
+                    var freshdeskConfig = await this.getFreshdeskConfig();
+                    if (freshdeskConfig) {
+                        var baseUrl = freshdeskConfig.im360_value;
+                        var funcCode = freshdeskConfig.im360_value2;
+                        var funcCodeArr = funcCode.toString().split(';;;;');
+                        var firstFuncCode = funcCodeArr[0];
+                        this.freshdeskUrl = `${baseUrl}/searchByResellerId?code=${firstFuncCode}&resellerId=`;
+
+                        var im360_value3 = freshdeskConfig.im360_value3;
+                        if (im360_value3) {
+                            this.appId = im360_value3;
+                            console.log(`${this.pageTitle} - appId from FreshdeskAPI configuration: ${this.appId}`);
+                        }
+
+                        var im360_value4 = freshdeskConfig.im360_value4;
+                        if (im360_value4) {
+                            this.formId = im360_value4;
+                            console.log(`${this.pageTitle} - formId from FreshdeskAPI configuration: ${this.formId}`);
+                        }
+                    } else {
+                        console.error(`${this.pageTitle} - freshdeskConfig is null`);
+                    }
+
+                    if (this.freshdeskUrl) {
+                        console.log(`${this.pageTitle} - freshdeskUrl: ${this.freshdeskUrl}`);
+                        var ticketsArr = [];
+                        accountsData = await this.getAccountsData();
+
+                        await asyncForEach(accountsData, async account => {
+                            var tickets = await this.getTickets(account);
+                            if (tickets.length > 0) {
+                                ticketsArr = ticketsArr.concat(tickets);
+                            }
+                        });
+
+                        console.log(`${this.pageTitle} - ticketsArr: ${JSON.stringify(ticketsArr)}`);
+                        this.generateDatagrid(ticketsArr); 
+                    } else {
+                        console.error(`${this.pageTitle} - Freshdesk API URL is null`);
+                    }
+
+                },
+                methods: {
+                    async getFreshdeskConfig() {
+                        var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                         <entity name='im360_configuration'> \
+                             <attribute name='im360_value'/> \
+                             <attribute name='im360_value2'/> \
+                             <attribute name='im360_value3'/> \
+                             <attribute name='im360_value4'/> \
+                             <filter type='and'> \
+                                 <condition attribute='im360_name' operator='eq' value='FreshdeskAPI' /> \
+                                 <condition attribute='statuscode' operator='eq' value='1' /> \
+                             </filter> \
+                         </entity> \
+                         </fetch>";
+
+                        var pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("im360_configuration", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null) {
+                                    return result.entities[0];
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get Freshdesk configuration.`);
+                                    return null;
+                                }
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage();
+                                return null;
+                            }
+                        );
+                    },
+
+                    async getAccountsData() {
+                        var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                              <entity name = 'account' > \
+                                <attribute name='accountid' /> \
+                                <attribute name='name' /> \
+                                <attribute name='im360_armid' /> \
+                                <filter type='and'> \
+                                  <condition attribute='im360_cloudowner' operator='eq-userid' /> \
+                                  <condition attribute='im360_armid' operator='not-null' /> \
+                                </filter> \
+                                <order attribute='name' descending='false' /> \
+                              </entity > \
+                            </fetch >";
+
+                        var pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null) {
+                                    console.log(`${pageTitle} - accounts result: ${JSON.stringify(result)}`);
+                                    return result.entities;
+                                } else {
+                                    console.error(`${pageTitle} - accounts data is empty.`);
+                                    return null;
+                                }
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage();
+                                return null;
+                            }
+                        );
+                    },
+
+                    async getTickets(account) {
+                        var results = [];
+
+                        var resellerId = account.im360_armid;
+
+                        var response;
+                        try {
+                            var fullUrl = `${this.freshdeskUrl}${resellerId}`;
+                            console.log(fullUrl);
+                            response = await axios.get(fullUrl);
+                        } catch (err) {
+                            console.error(`${this.pageTitle} - Freshdesk API error`);
+                        }
+
+                        if (response && response.data) {
+                            var items = response.data.results;
+                            if (items && items.length > 0) {
+                                items.forEach(item => {
+                                    if (Object.keys(item).length > 0) {
+                                        var itemNew = {
+                                            TicketId: item.id,
+                                            Subject: item.subject,
+                                            Status: this.getStatus(item.status),
+                                            Priority: this.getPriority(item.priority),
+                                            'CMP Account ID': account.im360_armid,
+                                            'Account Name': account.name,
+                                            X_Days_Old: item.created_at ? Math.round((new Date() - Date.parse(item.created_at.substring(0, 10))) / (1000 * 3600 * 24)) : '',
+                                            Created_at: item.created_at ? item.created_at.substring(0, 10) : ''
+                                        };
+
+                                        console.log(`${this.pageTitle} - item after adding more fields: ${JSON.stringify(itemNew)}`);
+                                        results.push(itemNew);
+                                    }
+                                });
+                            } 
+                        } else {
+                            console.error(`${this.pageTitle} - Get Freshdesk tickets error`);
+                        }
+                        this.hideLoadingPage();
+                        return results;
+                    },
+
+                    generateDatagrid(ticketsArr) {
+                        var pageTitle = this.pageTitle;
+                        var getAccountIdByName = this.getAccountIdByName;
+                        var appId = this.appId;
+                        var formId = this.formId;
+
+                        $("#gridContainer").dxDataGrid({
+                            dataSource: ticketsArr,
+                            remoteOperations: false,
+                            allowColumnReordering: true,
+                            rowAlternationEnabled: true,
+                            allowColumnResizing: true,
+                            columnAutoWidth: true,
+                            columnChooser: { enabled: true },
+                            columnFixing: { enabled: true },
+                            filterRow: { visible: true },
+                            headerFilter: { visible: true },
+                            editing: { mode: `form`, allowUpdating: false, allowEditing: false, allowAdding: false, allowDeleting: false },
+                            export: { enabled: true, fileName: `item` },
+                            grouping: { contextMenuEnabled: true },
+                            groupPanel: { visible: true },
+                            hoverStateEnabled: true,
+                            loadPanel: { height: 100, width: 200, text: `Loading Data...` },
+                            pager: { showInfo: true, infoText: `Page {0}. Total: {1} ({2} items)`, showPageSizeSelector: true, allowedPageSizes: [5, 15, 30] },
+                            paging: { pageSize: 20, pageIndex: 0 },
+                            searchPanel: { visible: true, width: 240, placeholder: `Search...` },
+                            selection: { mode: `single` },
+                            sorting: { mode: `multiple` },
+                            showBorders: true,
+                            showColumnLines: true,
+                            showRowLines: true,
+                            showScrollbar: true,
+                            useNative: false,
+                            onSelectionChanged: function (selectedItems) {
+                                var data = selectedItems.selectedRowsData[0];
+                                console.log(`${pageTitle} - onSelectionChanged -> data: ${JSON.stringify(data)}`);
+                                var accountId = getAccountIdByName(data['Account Name']);
+                                var ticketId = data.TicketId;
+                                var url = window.location.protocol + "//" + window.location.host + "/";
+                                var fieldName = 'im360_newnavigationtab';
+                                var tabName = 'Freshdesk';    
+                                var selectedResellerId = data['CMP Account ID'];
+                                var fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
+                                console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
+                                window.open(fullUrl, '_blank');
+                                return null;
+                            }
+                        });
+                        this.hideLoadingPage();
+                    },
+
+                    showLoadingPage() {
+                        this.showLoading = true;
+                    },
+
+                    hideLoadingPage() {
+                        try {
+                            setTimeout(() => {
+                                this.showLoading = false;
+                            }, 1000);
+                        } catch (ex) {
+                            this.showLoading = false;
+                        }
+                    },
+
+                    getAccountIdByName(accountName) {
+                        var accountId = '';
+                        accountsData.forEach((account) => {
+                            if (account.name === accountName) {
+                                accountId = account.accountid;
+                            }
+                        });
+                        return accountId;
+                    },
+
+                    getPriority(priority) {
+                        if (!priority) {
+                            return "";
+                        }
+                        let result = "";
+                        switch (priority) {
+                            case 1:
+                                result = "Low";
+                                break;
+                            case 2:
+                                result = "Medium";
+                                break;
+                            case 3:
+                                result = "High";
+                                break;
+                            case 4:
+                                result = "Urgent";
+                                break;
+                        }
+                        return result;
+                    },
+
+                    getStatus (status) {
+                        if (!status) {
+                            return "";
+                        }
+                        let result = "";
+                        switch (status) {
+                            case 2:
+                                result = "Open";
+                                break;
+                            case 3:
+                                result = "Pending";
+                                break;
+                            case 4:
+                                result = "Resolved";
+                                break;
+                            case 5:
+                                result = "Closed";
+                                break;
+                            case 7:
+                                result = "Waiting for 3rd party";
+                                break;
+                            case 8:
+                                result = "New";
+                                break;
+                            case 9:
+                                result = "Waiting for maintenance";
+                                break;
+                        }
+                        return result;
+                    }
+                }
+                
+            });
+
+            const asyncForEach = async (array, callback) => {
+                if (array && callback) {
+                    for (let index = 0; index < array.length; index++) {
+                        await callback(array[index], index, array);
+                    }
+                }
+            }
+        </script>
+
+
+        <style scoped="">
+            body {
+                height: 100%;
+                -moz-osx-font-smoothing: grayscale;
+                -webkit-font-smoothing: antialiased;
+                font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
+            }
+
+            /* loading image */
+            #loading {
+                width: 100%;
+                height: 100%;
+                top: 0px;
+                left: 0px;
+                position: fixed;
+                display: block;
+                opacity: 0.85;
+                background-color: #fff;
+                z-index: 99;
+                text-align: center;
+            }
+
+            #loading-content {
+                position: absolute;
+                top: 30%;
+                left: 45%;
+                text-align: center;
+                z-index: 100;
+            }
+
+            .datagrid {
+                margin: 10px 20px 10px 20px;
+            }
+
+            .dx-checkbox-container {
+                height: 25px;
+            }
+        </style>
+
+    
+
+
+</body></html>
