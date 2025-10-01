@@ -88,11 +88,11 @@
                             <td>{{zendesk_bcn}}</td>
                             <td>{{isStage ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value : record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value}}</td>
                             <td>{{isStage ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value : record.custom_fields.find(f => f.id === 20780455543956) && record.custom_fields.find(f => f.id === 20780455543956).value}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 31042462931476) && record.custom_fields.find(f => f.id === 31042462931476).value : record.custom_fields.find(f => f.id === 34698829065236) && record.custom_fields.find(f => f.id === 34698829065236).value}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 33937714050708) && record.custom_fields.find(f => f.id === 33937714050708).value : record.custom_fields.find(f => f.id === 34698770438676) && record.custom_fields.find(f => f.id === 34698770438676).value}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 35415435690388) && record.custom_fields.find(f => f.id === 35415435690388).value : record.custom_fields.find(f => f.id === 35228789545364) && record.custom_fields.find(f => f.id === 35228789545364).value}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 36211322445460) && record.custom_fields.find(f => f.id === 36211322445460).value : record.custom_fields.find(f => f.id === 35229050467860) && record.custom_fields.find(f => f.id === 35229050467860).value}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 31959436739604) && record.custom_fields.find(f => f.id === 31959436739604).value : record.custom_fields.find(f => f.id === 35138178531732) && record.custom_fields.find(f => f.id === 35138178531732).value}}</td>
+                            <td>{{record.strDomain}}</td>
+                            <td>{{record.strSupportTier}}</td>
+                            <td>{{record.strPlatform}}</td>
+                            <td>{{record.strVendor}}</td>
+                            <td>{{record.strCountry}}</td>
                             <td>{{record.status}}</td>
                             <td>{{record.priority}}</td>
                             <td>{{record.issueType}}</td>
@@ -601,6 +601,20 @@
 
                 },
 
+                async getCustomFieldValue(fieldId, fieldValue) {
+                    let result = fieldValue;
+                    let jsonId = fieldId;
+                    let jsonPath = 'ticket_fields/';
+                    let fieldData = fieldId ? await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                    if (fieldData && fieldData.ticket_field && fieldData.ticket_field.custom_field_options) {
+                        const obj = fieldData.ticket_field.custom_field_options.find(item => item.value === fieldValue);
+                        result = obj ? obj.name : fieldValue;
+                    }
+                    return result;
+                },
+
+                
+
                 // async getGroupName(groupId, zendeskBaseUrl, funcCode) {
                 //     let result = 'N/A';
                 //     if (groupId && groupId !== 'null') {
@@ -662,6 +676,32 @@
                             }
                         }
                         result.issueType = this.getIssueType(result, isStage);
+                        
+                        let domainFieldId = isStage ? 31042462931476 : 34698829065236;
+                        const objDomain = result.custom_fields.find(item => item.id === domainFieldId);
+                        const domainValue = objDomain ? objDomain.value : '';
+                        result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '';
+                        
+                        let supportTierFieldId = isStage ? 33937714050708 : 34698770438676;
+                        const objTier = result.custom_fields.find(item => item.id === supportTierFieldId);
+                        const tierValue = objTier ? objTier.value : '';
+                        result.strSupportTier = tierValue ? await this.getCustomFieldValue(supportTierFieldId, tierValue) : '';
+
+                        let platformFieldId = isStage ? 35415435690388 : 35228789545364;
+                        const objPlatform = result.custom_fields.find(item => item.id === platformFieldId);
+                        const platformValue = objPlatform ? objPlatform.value : '';
+                        result.strPlatform = platformValue ? await this.getCustomFieldValue(platformFieldId, platformValue) : '';
+
+                        let vendorFieldId = isStage ? 36211322445460 : 35229050467860;
+                        const objVendor = result.custom_fields.find(item => item.id === vendorFieldId);
+                        const vendorValue = objVendor ? objVendor.value : '';
+                        result.strVendor = vendorValue ? await this.getCustomFieldValue(vendorFieldId, vendorValue) : '';
+
+                        let countryFieldId = isStage ? 31959436739604 : 35138178531732;
+                        const objCountry = result.custom_fields.find(item => item.id === countryFieldId);
+                        const countryValue = objCountry ? objCountry.value : '';
+                        result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
+
                     }
                     
                     return result;
