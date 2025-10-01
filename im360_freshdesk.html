@@ -58,13 +58,10 @@
                         {{record.requesterEmail}}
                     </div>
                     
-                    <div v-if="record.tags && record.tags[0]" class="recordTags">
+                    <!-- <div v-if="record.tags && record.tags[0]" class="recordTags">
                         <strong class="boldTags">Tags:</strong>
                         {{record.tags.length > 0 ? record.tags : ''}}
-                        <!-- <ul id="tags">
-                            <li v-for="item in record.tags" :key="item" v-html="item"></li>
-                        </ul> -->
-                    </div>
+                    </div> -->
 
                    <table v-if="record && record.custom_fields" aria-describedby="ticketDetails" class="details">
                         <tr>
@@ -79,9 +76,8 @@
                             <th id="9">Country</th>
                             <th id="10">Status</th>
                             <th id="11">Priority</th>
-                            <th id="12">Issue type</th>
-                            <th id="13">Jira ticket ID</th>
-                            <th id="14">IMServ ticket ID </th>
+                            <th id="12">Jira ticket ID</th>
+                            <th id="13">IMServ ticket ID </th>
                         </tr>
                         <tr>
                             <td>{{record.strAgent}}</td>
@@ -93,9 +89,8 @@
                             <td>{{record.strPlatform}}</td>
                             <td>{{record.strVendor}}</td>
                             <td>{{record.strCountry}}</td>
-                            <td>{{record.status}}</td>
-                            <td>{{record.priority}}</td>
-                            <td>{{record.issueType}}</td>
+                            <td>{{record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : ''}}</td>
+                            <td>{{record.priority ? record.priority.charAt(0).toUpperCase() + record.priority.slice(1) : ''}}</td>
                             <td>{{isStage ? record.custom_fields.find(f => f.id === 33478946088596) && record.custom_fields.find(f => f.id === 33478946088596).value : record.custom_fields.find(f => f.id === 35113832690964) && record.custom_fields.find(f => f.id === 35113832690964).value}}</td>
                             <td>{{isStage ? record.custom_fields.find(f => f.id === 33478981057940) && record.custom_fields.find(f => f.id === 33478981057940).value : record.custom_fields.find(f => f.id === 34693101133716) && record.custom_fields.find(f => f.id === 34693101133716).value}}</td>
                         </tr>
@@ -442,7 +437,7 @@
                                 if (metricsData) {
                                     this.record.ticket_metric = metricsData.ticket_metric;
                                 }
-                                this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
+                                //this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
                             }
                         } else {
                             record = null;
@@ -493,7 +488,7 @@
                         if (metricsData) {
                             this.record.ticket_metric = metricsData.ticket_metric;
                         }
-                        this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
+                        //this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
                     }
                 },
 
@@ -520,86 +515,86 @@
                     return result;
                 },
 
-                getIssueType(result, isStageInstance) {
-                    let issueType = '';
-                    let issueTypeIds = [34811885834260, 34811954493716, 34812292526612, 34812336427028, 34699417128340];
-                    if (isStageInstance) {
-                       issueTypeIds = [34812503928980, 34812521159316, 38816279478932, 34812589895316, 34812614350228, 34750532695700];         
-                    }
+                // getIssueType(result, isStageInstance) {
+                //     let issueType = '';
+                //     let issueTypeIds = [34811885834260, 34811954493716, 34812292526612, 34812336427028, 34699417128340];
+                //     if (isStageInstance) {
+                //        issueTypeIds = [34812503928980, 34812521159316, 38816279478932, 34812589895316, 34812614350228, 34750532695700];         
+                //     }
 
-                    let isAllNull = true;
-                    if (result && result.custom_fields) {
-                        const customFields = result.custom_fields;
-                        customFields.forEach(field => {
-                            issueTypeIds.forEach(id => {
-                                if (field.id === id) {
-                                    if (field.value !== null) {
-                                        isAllNull = false
-                                    }
-                                }
-                            });
-                        });
-                    }
-                    if (isAllNull) {
-                        return 'null';
-                    }
+                //     let isAllNull = true;
+                //     if (result && result.custom_fields) {
+                //         const customFields = result.custom_fields;
+                //         customFields.forEach(field => {
+                //             issueTypeIds.forEach(id => {
+                //                 if (field.id === id) {
+                //                     if (field.value !== null) {
+                //                         isAllNull = false
+                //                     }
+                //                 }
+                //             });
+                //         });
+                //     }
+                //     if (isAllNull) {
+                //         return 'null';
+                //     }
 
-                    let isAllReviewAndUpdate = true;
-                    let reviewAndUpdate = 'platform_review_and_update';
-                    if (result && result.custom_fields) {
-                        const customFields = result.custom_fields;
-                        customFields.forEach(field => {
-                            issueTypeIds.forEach(id => {
-                                if (field.id === id) {
-                                    if (field.value !== reviewAndUpdate) {
-                                        isAllReviewAndUpdate = false
-                                    }
-                                }
-                            });
-                        });
-                    }
-                    if (isAllReviewAndUpdate) {
-                        return reviewAndUpdate;
-                    } 
+                //     let isAllReviewAndUpdate = true;
+                //     let reviewAndUpdate = 'platform_review_and_update';
+                //     if (result && result.custom_fields) {
+                //         const customFields = result.custom_fields;
+                //         customFields.forEach(field => {
+                //             issueTypeIds.forEach(id => {
+                //                 if (field.id === id) {
+                //                     if (field.value !== reviewAndUpdate) {
+                //                         isAllReviewAndUpdate = false
+                //                     }
+                //                 }
+                //             });
+                //         });
+                //     }
+                //     if (isAllReviewAndUpdate) {
+                //         return reviewAndUpdate;
+                //     } 
 
-                    //3. one of the fields set to a value different from #1 and #2 -> display this value in Issue Type
-                    if (result && result.custom_fields) {
-                        const customFields = result.custom_fields;
-                        customFields.forEach(field => {
-                            issueTypeIds.forEach(id => {
-                                if (field.id === id) {
-                                    if (field.value !== null && field.value !== reviewAndUpdate) {
-                                        issueType = field.value;
-                                    }
-                                }
-                            });
-                        });
-                    }
+                //     //3. one of the fields set to a value different from #1 and #2 -> display this value in Issue Type
+                //     if (result && result.custom_fields) {
+                //         const customFields = result.custom_fields;
+                //         customFields.forEach(field => {
+                //             issueTypeIds.forEach(id => {
+                //                 if (field.id === id) {
+                //                     if (field.value !== null && field.value !== reviewAndUpdate) {
+                //                         issueType = field.value;
+                //                     }
+                //                 }
+                //             });
+                //         });
+                //     }
 
-                    // >1 field set to a value different from #1 and #2 -> display error (should not happen) and >1 values
-                    if (issueType && issueType.length > 0) {
-                        let count = 0;
-                        if (result && result.custom_fields) {
-                            const customFields = result.custom_fields;
-                            customFields.forEach(field => {
-                                issueTypeIds.forEach(id => {
-                                    if (field.id === id) {
-                                        if (field.value !== null && field.value !== reviewAndUpdate) {
-                                            count++;
-                                        }
-                                    }
-                                });
-                            });
-                        }
-                        if (count > 1) {
-                            console.error(`${this.pageTitle} - More than one Issue Type values found for ticket ${result.id}`);
-                            issueType = 'Error - multiple issue types found';
-                        }
-                    }
+                //     // >1 field set to a value different from #1 and #2 -> display error (should not happen) and >1 values
+                //     if (issueType && issueType.length > 0) {
+                //         let count = 0;
+                //         if (result && result.custom_fields) {
+                //             const customFields = result.custom_fields;
+                //             customFields.forEach(field => {
+                //                 issueTypeIds.forEach(id => {
+                //                     if (field.id === id) {
+                //                         if (field.value !== null && field.value !== reviewAndUpdate) {
+                //                             count++;
+                //                         }
+                //                     }
+                //                 });
+                //             });
+                //         }
+                //         if (count > 1) {
+                //             console.error(`${this.pageTitle} - More than one Issue Type values found for ticket ${result.id}`);
+                //             issueType = 'Error - multiple issue types found';
+                //         }
+                //     }
 
-                    return issueType;
+                //     return issueType;
 
-                },
+                // },
 
                 async getCustomFieldValue(fieldId, fieldValue) {
                     let result = fieldValue;
@@ -675,7 +670,7 @@
                                 result.author_email = userData.user ? userData.user.email : '';
                             }
                         }
-                        result.issueType = this.getIssueType(result, isStage);
+                        //result.issueType = this.getIssueType(result, isStage);
                         
                         let domainFieldId = isStage ? 31042462931476 : 34698829065236;
                         const objDomain = result.custom_fields.find(item => item.id === domainFieldId);
