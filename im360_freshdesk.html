@@ -80,19 +80,23 @@
                             <th id="13">IMServ ticket ID </th>
                         </tr>
                         <tr>
-                            <td>{{record.strAgent}}</td>
-                            <td>{{zendesk_bcn}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value : record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value : record.custom_fields.find(f => f.id === 20780455543956) && record.custom_fields.find(f => f.id === 20780455543956).value}}</td>
-                            <td>{{record.strDomain}}</td>
-                            <td>{{record.strSupportTier}}</td>
-                            <td>{{record.strPlatform}}</td>
-                            <td>{{record.strVendor}}</td>
-                            <td>{{record.strCountry}}</td>
-                            <td>{{record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : ''}}</td>
-                            <td>{{record.priority ? record.priority.charAt(0).toUpperCase() + record.priority.slice(1) : ''}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 33478946088596) && record.custom_fields.find(f => f.id === 33478946088596).value : record.custom_fields.find(f => f.id === 35113832690964) && record.custom_fields.find(f => f.id === 35113832690964).value}}</td>
-                            <td>{{isStage ? record.custom_fields.find(f => f.id === 33478981057940) && record.custom_fields.find(f => f.id === 33478981057940).value : record.custom_fields.find(f => f.id === 34693101133716) && record.custom_fields.find(f => f.id === 34693101133716).value}}</td>
+                            <td>{{record.strAgent ? record.strAgent : '-'}}</td>
+                            <td>{{zendesk_bcn ? zendesk_bcn : '-'}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value : '-' 
+                                : record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value ? record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value : '-'}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value : '-'
+                                : record.custom_fields.find(f => f.id === 20780455543956) && record.custom_fields.find(f => f.id === 20780455543956).value ? record.custom_fields.find(f => f.id === 20780455543956) && record.custom_fields.find(f => f.id === 20780455543956).value : '-'}}</td>
+                            <td>{{record.strDomain ? record.strDomain : '-'}}</td>
+                            <td>{{record.strSupportTier ? record.strSupportTier : '-'}}</td>
+                            <td>{{record.strPlatform ? record.strPlatform : '-'}}</td>
+                            <td>{{record.strVendor ? record.strVendor : '-'}}</td>
+                            <td>{{record.strCountry ? record.strCountry : '-'}}</td>
+                            <td>{{record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : '-'}}</td>
+                            <td>{{record.priority ? record.priority.charAt(0).toUpperCase() + record.priority.slice(1) : '-'}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 33478946088596) && record.custom_fields.find(f => f.id === 33478946088596).value ? record.custom_fields.find(f => f.id === 33478946088596) && record.custom_fields.find(f => f.id === 33478946088596).value : '-'
+                                : record.custom_fields.find(f => f.id === 35113832690964) && record.custom_fields.find(f => f.id === 35113832690964).value ? record.custom_fields.find(f => f.id === 35113832690964) && record.custom_fields.find(f => f.id === 35113832690964).value : '-'}}</td>
+                            <td>{{isStage ? record.custom_fields.find(f => f.id === 33478981057940) && record.custom_fields.find(f => f.id === 33478981057940).value ? record.custom_fields.find(f => f.id === 33478981057940) && record.custom_fields.find(f => f.id === 33478981057940).value : '-'
+                                : record.custom_fields.find(f => f.id === 34693101133716) && record.custom_fields.find(f => f.id === 34693101133716).value ? record.custom_fields.find(f => f.id === 34693101133716) && record.custom_fields.find(f => f.id === 34693101133716).value : '-'}}</td>
                         </tr>
                     </table>
                     <br>
@@ -661,7 +665,7 @@
 
                         let jsonIdForAssignee = result.assignee_id;
                         let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
-                        result.strAgent = agentData.user ? agentData.user.name : '';
+                        result.strAgent = agentData.user ? agentData.user.name : '-';
                         result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
                         if (result.conversations) {
                             for (let item of result.conversations) {
