@@ -221,6 +221,44 @@
         let zendesk_bcn = '';
         let zendesk_resellerName = '';
         let zendesk_ticketIdParam = '';
+
+        function setClientApiContext(xrm, accountBCN, resellerName, newnavigationtab) {
+            var pageTitle = 'Zendesk';
+            console.log(`${pageTitle} - setClientApiContext started...`);
+            var im360_armid = accountBCN;
+            if (im360_armid) {
+                zendesk_bcn = im360_armid;
+                console.log(`${pageTitle} - zendesk_bcn has been replaced with im360_armid: ${im360_armid}`);
+            }
+            console.log(`${pageTitle} - Account BCN: ${zendesk_bcn}`);
+            zendesk_resellerName = resellerName;
+            
+            if (newnavigationtab) {
+                console.log(`${pageTitle} - newnavigationtab: ${newnavigationtab.toString()}`);
+            } else {
+                console.log(`${pageTitle} - newnavigationtab is null`);
+            }
+
+            let aa = newnavigationtab && newnavigationtab.toString();
+
+            //if (newnavigationtab && newnavigationtab.toString().startsWith('Freshdesk')) {
+            if (newnavigationtab && newnavigationtab.toString()) {  
+                var paramsFromExtraqs = newnavigationtab.toString().split('_');
+                console.log(`${pageTitle} - paramsFromExtraqs: ${paramsFromExtraqs.join(',')}`);
+                zendesk_ticketIdParam = paramsFromExtraqs[1];
+                console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
+                console.log(`${pageTitle} - zendesk_bcn before check: ${zendesk_bcn}`);
+                if (!zendesk_bcn && paramsFromExtraqs.length > 2) {
+                    var paramBCN = paramsFromExtraqs[2];
+                    console.log(`${pageTitle} - paramsFromExtraqs[2]: ${paramBCN}`);
+                    if (paramBCN) {
+                        zendesk_bcn = paramBCN;
+                        console.log(`${pageTitle} - Account BCN has been replaced by paramBCN: ${paramBCN}`);
+                    }
+                }
+            }
+        };
+
         let items = [];
         let record = {};
 
