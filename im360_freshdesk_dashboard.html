@@ -242,7 +242,7 @@
                                 var ticketId = data.TicketId;
                                 var url = window.location.protocol + "//" + window.location.host + "/";
                                 var fieldName = 'im360_newnavigationtab';
-                                var tabName = 'Support Tickets';    
+                                var tabName = 'tab_freshdesk';    
                                 var selectedResellerId = data['CMP Account ID'].toString();
                                 var fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                 console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
