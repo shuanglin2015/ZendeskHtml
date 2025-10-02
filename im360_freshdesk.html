@@ -219,10 +219,9 @@
     <script>
         let isStage = true;
         let zendesk_bcn = '';
-        let zendesk_resellerName = '';
         let zendesk_ticketIdParam = '';
 
-        function setClientApiContext(xrm, accountBCN, resellerName, newnavigationtab) {
+        function setClientApiContext(Xrm, context, accountBCN, newnavigationtab) {
             var pageTitle = 'Zendesk';
             console.log(`${pageTitle} - setClientApiContext started...`);
             var im360_armid = accountBCN;
@@ -231,7 +230,6 @@
                 console.log(`${pageTitle} - zendesk_bcn has been replaced with im360_armid: ${im360_armid}`);
             }
             console.log(`${pageTitle} - Account BCN: ${zendesk_bcn}`);
-            zendesk_resellerName = resellerName;
             
             if (newnavigationtab) {
                 console.log(`${pageTitle} - newnavigationtab: ${newnavigationtab.toString()}`);
@@ -239,18 +237,16 @@
                 console.log(`${pageTitle} - newnavigationtab is null`);
             }
 
-            let aa = newnavigationtab && newnavigationtab.toString();
-
-            //if (newnavigationtab && newnavigationtab.toString().startsWith('Freshdesk')) {
-            if (newnavigationtab && newnavigationtab.toString()) {  
+            // newnavigationtab example: "tab_freshdesk_31105_20666904"
+            if (newnavigationtab && newnavigationtab.toString().startsWith('tab_freshdesk')) { 
                 var paramsFromExtraqs = newnavigationtab.toString().split('_');
                 console.log(`${pageTitle} - paramsFromExtraqs: ${paramsFromExtraqs.join(',')}`);
-                zendesk_ticketIdParam = paramsFromExtraqs[1];
+                zendesk_ticketIdParam = paramsFromExtraqs[2];
                 console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
                 console.log(`${pageTitle} - zendesk_bcn before check: ${zendesk_bcn}`);
-                if (!zendesk_bcn && paramsFromExtraqs.length > 2) {
-                    var paramBCN = paramsFromExtraqs[2];
-                    console.log(`${pageTitle} - paramsFromExtraqs[2]: ${paramBCN}`);
+                if (!zendesk_bcn && paramsFromExtraqs.length > 3) {
+                    var paramBCN = paramsFromExtraqs[3];
+                    console.log(`${pageTitle} - paramBCN: ${paramBCN}`);
                     if (paramBCN) {
                         zendesk_bcn = paramBCN;
                         console.log(`${pageTitle} - Account BCN has been replaced by paramBCN: ${paramBCN}`);
@@ -506,11 +502,7 @@
                         this.hideLoadingPage();
                     }
                     if (!record && this.selectOptions.length === 0) {
-                        if (zendesk_resellerName.endsWith('.')) {
-                            this.notFoundMessage = `No ticket found for ${zendesk_bcn} - ${zendesk_resellerName}`;
-                        } else {
-                            this.notFoundMessage = `No ticket found for ${zendesk_bcn} - ${zendesk_resellerName}.`;
-                        }
+                        this.notFoundMessage = `No ticket found for ${zendesk_bcn}`;
                     }
                     this.hideLoadingPage();
                 },
