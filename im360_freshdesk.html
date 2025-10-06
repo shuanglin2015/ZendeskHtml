@@ -218,18 +218,13 @@
 
     <script>
         let isStage = true;
+        let zendesk_country = '';
         let zendesk_bcn = '';
         let zendesk_ticketIdParam = '';
 
         function setClientApiContext(Xrm, context, accountBCN, newnavigationtab) {
             var pageTitle = 'Zendesk';
             console.log(`${pageTitle} - setClientApiContext started...`);
-            var im360_armid = accountBCN;
-            if (im360_armid) {
-                zendesk_bcn = im360_armid;
-                console.log(`${pageTitle} - zendesk_bcn has been replaced with im360_armid: ${im360_armid}`);
-            }
-            console.log(`${pageTitle} - Account BCN: ${zendesk_bcn}`);
             
             if (newnavigationtab) {
                 console.log(`${pageTitle} - newnavigationtab: ${newnavigationtab.toString()}`);
@@ -237,21 +232,12 @@
                 console.log(`${pageTitle} - newnavigationtab is null`);
             }
 
-            // newnavigationtab example: "tab_freshdesk_31105_20666904"
+            /* newnavigationtab example: "tab_freshdesk_31105_20666904" */
             if (newnavigationtab && newnavigationtab.toString().startsWith('tab_freshdesk')) { 
                 var paramsFromExtraqs = newnavigationtab.toString().split('_');
                 console.log(`${pageTitle} - paramsFromExtraqs: ${paramsFromExtraqs.join(',')}`);
                 zendesk_ticketIdParam = paramsFromExtraqs[2];
                 console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
-                console.log(`${pageTitle} - zendesk_bcn before check: ${zendesk_bcn}`);
-                if (!zendesk_bcn && paramsFromExtraqs.length > 3) {
-                    var paramBCN = paramsFromExtraqs[3];
-                    console.log(`${pageTitle} - paramBCN: ${paramBCN}`);
-                    if (paramBCN) {
-                        zendesk_bcn = paramBCN;
-                        console.log(`${pageTitle} - Account BCN has been replaced by paramBCN: ${paramBCN}`);
-                    }
-                }
             }
         };
 
@@ -282,15 +268,14 @@
                 averageResolveTime: '',
             },
             async mounted() {
-                if (!zendesk_bcn){
-                    zendesk_bcn = localStorage.getItem('accountBCN');
-                }
-                if (!zendesk_bcn){
-                    let account = await this.getAccountBCN();
+                if (!zendesk_country || !zendesk_bcn){
+                    let account = await this.getAccountCountryAndBCN();
                     if (account) {
+                        zendesk_country = account.CountryName;
                         zendesk_bcn = account.im360_bcn;
                     }
                 }
+                console.log(`${this.pageTitle} - zendesk_country value in mounted(): ${zendesk_country}`);
                 console.log(`${this.pageTitle} - zendesk_bcn value in mounted(): ${zendesk_bcn}`);
                 this.showLoadingPage();
                 this.startTime = Date.now();
@@ -322,21 +307,19 @@
                 this.funcCodeForTickets = funcCodeForTickets;
                 this.funcCode = funcCode;
                 this.funcCodeForJsonById = funcCodeForJsonById;
-                if (this.zendeskBaseUrl && zendesk_bcn) {
+                if (this.zendeskBaseUrl && zendesk_country && zendesk_bcn) {
                     this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
                 } else {
                     setTimeout(() => {
-                        if (!zendesk_bcn) {
-                            zendesk_bcn = localStorage.getItem('accountBCN');
-                        }
-                        console.log(`${this.pageTitle} - zendesk_bcn: ${zendesk_bcn}`);
+                        console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
+                        console.log(`${this.pageTitle} - try again - zendesk_bcn: ${zendesk_bcn}`);
                         let message = 'try to start getTickets function for the second time';
                         console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
-                        if (zendesk_bcn) {
+                        if (zendesk_country && zendesk_bcn) {
                             this.notFoundMessage = '';
                             this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
                         } else {
-                            this.notFoundMessage = "Account BCN is required to find related tickets.";
+                            this.notFoundMessage = "Account Country and BCN are required to find related tickets.";
                             this.hideLoadingPage();
                         }
                     }, 2000);
@@ -375,12 +358,15 @@
                     );
                 },
 
-                async getAccountBCN() {
+                async getAccountCountryAndBCN() {
                     let accountid = this.getValueParam();
                     if (accountid) {
                         let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                             <entity name='account'> \
                                 <attribute name='im360_bcn' /> \
+                                <link-entity name='im360_country' from='im360_countryid' to='im360_country' link-type='inner'> \
+                                    <attribute name='im360_name' alias='CountryName' /> \
+                                </link-entity> \
                                 <filter type='and'> \
                                     <condition attribute='accountid' operator='eq' value='" + accountid + "' /> \
                                 </filter> \
@@ -441,7 +427,17 @@
                         this.hideLoadingPage();
                     }
                     if (response && response.data) {
-                        items = response.data.results;
+                        let itemsWithoutCountryFilter = response.data.results;
+                        await asyncForEach(itemsWithoutCountryFilter, async ticket => {
+                            let countryFieldId = isStage ? 31959436739604 : 35138178531732;
+                            const objCountry = ticket.custom_fields.find(item => item.id === countryFieldId);
+                            const countryValue = objCountry ? objCountry.value : '';
+                            let strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
+                            if (strCountry && zendesk_country && (strCountry.toLowerCase() == zendesk_country.toLowerCase())) {
+                                items.push(ticket);
+                            }
+                        });
+                        //items = response.data.results;
                         this.items = items;
                         if (items && items.length > 0) {
                             if (!selected) {
