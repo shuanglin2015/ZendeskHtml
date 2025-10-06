@@ -430,10 +430,10 @@
                         let itemsWithoutCountryFilter = response.data.results;
                         await asyncForEach(itemsWithoutCountryFilter, async ticket => {
                             let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                            const objCountry = ticket.custom_fields.find(item => item.id === countryFieldId);
+                            const objCountry = ticket.custom_fields && ticket.custom_fields.find(item => item.id === countryFieldId);
                             const countryValue = objCountry ? objCountry.value : '';
                             let strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
-                            if (strCountry && zendesk_country && (strCountry.toLowerCase() == zendesk_country.toLowerCase())) {
+                            if (strCountry && zendesk_country && (strCountry.toLowerCase().trim() == zendesk_country.toLowerCase().trim())) {
                                 items.push(ticket);
                             }
                         });
@@ -703,27 +703,27 @@
                         //result.issueType = this.getIssueType(result, isStage);
                         
                         let domainFieldId = isStage ? 31042462931476 : 34698829065236;
-                        const objDomain = result.custom_fields.find(item => item.id === domainFieldId);
+                        const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
                         const domainValue = objDomain ? objDomain.value : '';
                         result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '';
                         
                         let supportTierFieldId = isStage ? 33937714050708 : 34698770438676;
-                        const objTier = result.custom_fields.find(item => item.id === supportTierFieldId);
+                        const objTier = result.custom_fields && result.custom_fields.find(item => item.id === supportTierFieldId);
                         const tierValue = objTier ? objTier.value : '';
                         result.strSupportTier = tierValue ? await this.getCustomFieldValue(supportTierFieldId, tierValue) : '';
 
                         let platformFieldId = isStage ? 35415435690388 : 35228789545364;
-                        const objPlatform = result.custom_fields.find(item => item.id === platformFieldId);
+                        const objPlatform = result.custom_fields && result.custom_fields.find(item => item.id === platformFieldId);
                         const platformValue = objPlatform ? objPlatform.value : '';
                         result.strPlatform = platformValue ? await this.getCustomFieldValue(platformFieldId, platformValue) : '';
 
                         let vendorFieldId = isStage ? 36211322445460 : 35229050467860;
-                        const objVendor = result.custom_fields.find(item => item.id === vendorFieldId);
+                        const objVendor = result.custom_fields && result.custom_fields.find(item => item.id === vendorFieldId);
                         const vendorValue = objVendor ? objVendor.value : '';
                         result.strVendor = vendorValue ? await this.getCustomFieldValue(vendorFieldId, vendorValue) : '';
 
                         let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                        const objCountry = result.custom_fields.find(item => item.id === countryFieldId);
+                        const objCountry = result.custom_fields && result.custom_fields.find(item => item.id === countryFieldId);
                         const countryValue = objCountry ? objCountry.value : '';
                         result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
 

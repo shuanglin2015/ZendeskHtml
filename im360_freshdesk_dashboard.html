@@ -28,10 +28,14 @@
         </div>
 
         <script>
-            var app = new Vue({
+            let isStage = true;
+            let zendeskBaseUrl = '';
+            let funcCodeForJsonById = '';
+
+            let app = new Vue({
                 el: '#app',
                 data: {
-                    pageTitle: 'FreshdeskDashboard',
+                    pageTitle: 'ZendeskDashboard',
                     showLoading: true,
                     freshdeskUrl: '',
                     // default appId value when Configuration FreshdeskAPI -> Value3 is not configured
@@ -45,21 +49,24 @@
                     this.showLoadingPage();
                     this.startTime = Date.now();
 
-                    var freshdeskConfig = await this.getFreshdeskConfig();
+                    let freshdeskConfig = await this.getFreshdeskConfig();
                     if (freshdeskConfig) {
-                        var baseUrl = freshdeskConfig.im360_value;
-                        var funcCode = freshdeskConfig.im360_value2;
-                        var funcCodeArr = funcCode.toString().split(';;;;');
-                        var firstFuncCode = funcCodeArr[2];
+                        let baseUrl = freshdeskConfig.im360_value;
+                        this.zendeskBaseUrl = baseUrl;
+                        console.log(`${this.pageTitle} - zendeskBaseUrl from FreshdeskAPI configuration: ${this.zendeskBaseUrl}`);
+                        let funcCode = freshdeskConfig.im360_value2;
+                        let funcCodeArr = funcCode.toString().split(';;;;');
+                        let firstFuncCode = funcCodeArr[2];
                         this.freshdeskUrl = `${baseUrl}/searchByResellerId?code=${firstFuncCode}&resellerId=`;
+                        this.funcCodeForJsonById = funcCodeArr[3];
 
-                        var im360_value3 = freshdeskConfig.im360_value3;
+                        let im360_value3 = freshdeskConfig.im360_value3;
                         if (im360_value3) {
                             this.appId = im360_value3;
                             console.log(`${this.pageTitle} - appId from FreshdeskAPI configuration: ${this.appId}`);
                         }
 
-                        var im360_value4 = freshdeskConfig.im360_value4;
+                        let im360_value4 = freshdeskConfig.im360_value4;
                         if (im360_value4) {
                             this.formId = im360_value4;
                             console.log(`${this.pageTitle} - formId from FreshdeskAPI configuration: ${this.formId}`);
@@ -70,14 +77,27 @@
 
                     if (this.freshdeskUrl) {
                         console.log(`${this.pageTitle} - freshdeskUrl: ${this.freshdeskUrl}`);
-                        //var ticketsArr = [];
+
+                        let stageApi = 'crm-zendesk-api.azurewebsites.net';
+                        if (this.freshdeskUrl && this.freshdeskUrl.indexOf(stageApi) > -1) {
+                            isStage = true;
+                        } else {
+                            isStage = false;
+                        }
+
+                        let zendeskCountryName = localStorage.getItem('zendesk_country_name');
+                        let zendeskBCN = localStorage.getItem('zendesk_bcn');
+                        console.log(`${this.pageTitle} - zendeskCountryName from localStorage: ${zendeskCountryName}`);
+                        console.log(`${this.pageTitle} - zendeskBCN from localStorage: ${zendeskBCN}`);
+
+                        //let ticketsArr = [];
                         //accountsData = await this.getAccountsData();
 
-                        var accountBCN = '20666904';
-                        var tickets = await this.getTickets(accountBCN);
+                        // let zendeskBCN = '20666904';
+                        let tickets = await this.getTickets(zendeskCountryName, zendeskBCN);
 
                         // await asyncForEach(accountsData, async account => {
-                        //     var tickets = await this.getTickets(account);
+                        //     let tickets = await this.getTickets(account);
                         //     if (tickets.length > 0) {
                         //         ticketsArr = ticketsArr.concat(tickets);
                         //     }
@@ -105,7 +125,7 @@
                          </entity> \
                          </fetch>";
 
-                        var pageTitle = this.pageTitle;
+                        let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_configuration", "?fetchXml=" + fetchXml).then(
                             function success(result) {
                                 if (result != null) {
@@ -126,7 +146,7 @@
 
 
                     // async getAccountsData() {
-                    //     var fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                    //     let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                     //           <entity name = 'account' > \
                     //             <attribute name='accountid' /> \
                     //             <attribute name='name' /> \
@@ -139,7 +159,7 @@
                     //           </entity > \
                     //         </fetch >";
 
-                    //     var pageTitle = this.pageTitle;
+                    //     let pageTitle = this.pageTitle;
                     //     return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
                     //         function success(result) {
                     //             if (result != null) {
@@ -158,14 +178,17 @@
                     //     );
                     // },
 
-                    async getTickets(accountBCN) {
-                        var results = [];
+                    async getTickets(zendeskCountryName, zendeskBCN) {
+                        let results = [];
 
-                        var resellerId = accountBCN;
+                        let resellerCountry = zendeskCountryName ? zendeskCountryName : '';   // will get all tickets if resellerCountry is empty
+                        let resellerId = zendeskBCN ? zendeskBCN : '0';                       // will get all tickets if resellerId is 0
+                        console.log(`${this.pageTitle} - resellerCountry: ${resellerCountry}`);  
+                        console.log(`${this.pageTitle} - resellerId: ${resellerId}`);  
 
-                        var response;
+                        let response;
                         try {
-                            var fullUrl = `${this.freshdeskUrl}${resellerId}`;
+                            let fullUrl = `${this.freshdeskUrl}${resellerId}`;
                             console.log(fullUrl);
                             response = await axios.get(fullUrl);
                         } catch (err) {
@@ -173,19 +196,49 @@
                         }
 
                         if (response && response.data) {
-                            var items = response.data.results;
+                            let itemsWithoutCountryFilter = response.data.results;
+                            if (zendeskCountryName) {
+                                await asyncForEach(itemsWithoutCountryFilter, async ticket => {
+                                    let countryFieldId = isStage ? 31959436739604 : 35138178531732;
+                                    const objCountry = ticket.custom_fields && ticket.custom_fields.find(item => item.id === countryFieldId);
+                                    const countryValue = objCountry ? objCountry.value : '';
+                                    let strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '-';
+                                    if (strCountry && zendeskCountryName && (strCountry.toLowerCase().trim() == zendeskCountryName.toLowerCase().trim())) {
+                                        ticket.strCountry = strCountry;
+                                        items.push(ticket);
+                                    }
+                                });
+                            } else {
+                                items = itemsWithoutCountryFilter;
+                            }
+                            // let items = response.data.results;
+
+                            await asyncForEach(items, async result => {
+                                if (result && result.id && result.subject) {
+                                    if (!result.strCountry) {
+                                        let countryFieldId = isStage ? 31959436739604 : 35138178531732;
+                                        const objCountry = result.custom_fields && result.custom_fields.find(item => item.id === countryFieldId);
+                                        const countryValue = objCountry ? objCountry.value : '';
+                                        result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
+                                    }
+
+                                    let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
+                                    const objBCN = result.custom_fields && result.custom_fields.find(item => item.id === bcnFieldId);
+                                    const bcnValue = objBCN ? objBCN.value : '';
+                                    result.strBCN = bcnValue ? await this.getCustomFieldValue(bcnFieldId, bcnValue) : '-';
+                                }
+                            });
+
                             if (items && items.length > 0) {
                                 items.forEach(item => {
-                                    if (Object.keys(item).length > 0) {
-                                        var itemNew = {
+                                    if (item && item.id && item.subject && Object.keys(item).length > 0) {
+                                        let itemNew = {
                                             TicketId: item.id,
+                                            'Reseller Country': item.strCountry,
+                                            'Reseller BCN': item.strBCN,
                                             Subject: item.subject,
-                                            Status: this.getStatus(item.status),
-                                            Priority: this.getPriority(item.priority),
-                                            'CMP Account ID': '',
-                                            'Account Name': '',
-                                            X_Days_Old: item.created_at ? Math.round((new Date() - Date.parse(item.created_at.substring(0, 10))) / (1000 * 3600 * 24)) : '',
-                                            Created_at: item.created_at ? item.created_at.substring(0, 10) : ''
+                                            Status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
+                                            Priority: item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-'
                                         };
 
                                         console.log(`${this.pageTitle} - item after adding more fields: ${JSON.stringify(itemNew)}`);
@@ -200,11 +253,32 @@
                         return results;
                     },
 
+                    async getCustomFieldValue(fieldId, fieldValue) {
+                        let result = fieldValue;
+                        let jsonId = fieldId;
+                        let jsonPath = 'ticket_fields/';
+                        let fieldData = fieldId ? await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                        if (fieldData && fieldData.ticket_field && fieldData.ticket_field.custom_field_options) {
+                            const obj = fieldData.ticket_field.custom_field_options.find(item => item.value === fieldValue);
+                            result = obj ? obj.name : fieldValue;
+                        }
+                        return result;
+                    },
+
+                    async getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) {
+                        let result = 'N/A';
+                        if (jsonId && jsonId !== 'null') {
+                            const response = await axios.get(`${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`);
+
+                            result = response.data ? response.data : '';
+                        }
+                        return result;
+                    },
+
                     generateDatagrid(ticketsArr) {
-                        var pageTitle = this.pageTitle;
-                        //var getAccountIdByName = this.getAccountIdByName;
-                        var appId = this.appId;
-                        var formId = this.formId;
+                        let pageTitle = this.pageTitle;
+                        let appId = this.appId;
+                        let formId = this.formId;
 
                         $("#gridContainer").dxDataGrid({
                             dataSource: ticketsArr,
@@ -224,7 +298,7 @@
                             hoverStateEnabled: true,
                             loadPanel: { height: 100, width: 200, text: `Loading Data...` },
                             pager: { showInfo: true, infoText: `Page {0}. Total: {1} ({2} items)`, showPageSizeSelector: true, allowedPageSizes: [5, 15, 30] },
-                            paging: { pageSize: 20, pageIndex: 0 },
+                            paging: { pageSize: 15, pageIndex: 0 },
                             searchPanel: { visible: true, width: 240, placeholder: `Search...` },
                             selection: { mode: `single` },
                             sorting: { mode: `multiple` },
@@ -234,17 +308,16 @@
                             showScrollbar: true,
                             useNative: false,
                             onSelectionChanged: function (selectedItems) {
-                                var data = selectedItems.selectedRowsData[0];
+                                let data = selectedItems.selectedRowsData[0];
                                 console.log(`${pageTitle} - onSelectionChanged -> data: ${JSON.stringify(data)}`);
-                                //var accountId = getAccountIdByName(data['Account Name']);
-                                //var accountId = getAccountIdByBCN(data['Account Name']);
-                                var accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';
-                                var ticketId = data.TicketId;
-                                var url = window.location.protocol + "//" + window.location.host + "/";
-                                var fieldName = 'im360_newnavigationtab';
-                                var tabName = 'tab_freshdesk';    
-                                var selectedResellerId = data['CMP Account ID'].toString();
-                                var fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
+                                //let accountId = getAccountIdByCountryAndBCN(data['Account Name']);
+                                let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';
+                                let ticketId = data.TicketId;
+                                let url = window.location.protocol + "//" + window.location.host + "/";
+                                let fieldName = 'im360_newnavigationtab';
+                                let tabName = 'tab_freshdesk';    
+                                let selectedResellerId = data['CMP Account ID'].toString();
+                                let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                 console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
                                 window.open(fullUrl, '_blank');
                                 return null;
@@ -265,69 +338,6 @@
                         } catch (ex) {
                             this.showLoading = false;
                         }
-                    },
-
-                    getAccountIdByName(accountName) {
-                        var accountId = '';
-                        accountsData.forEach((account) => {
-                            if (account.name === accountName) {
-                                accountId = account.accountid;
-                            }
-                        });
-                        return accountId;
-                    },
-
-                    getPriority(priority) {
-                        if (!priority) {
-                            return "";
-                        }
-                        let result = "";
-                        switch (priority) {
-                            case 1:
-                                result = "Low";
-                                break;
-                            case 2:
-                                result = "Medium";
-                                break;
-                            case 3:
-                                result = "High";
-                                break;
-                            case 4:
-                                result = "Urgent";
-                                break;
-                        }
-                        return result;
-                    },
-
-                    getStatus (status) {
-                        if (!status) {
-                            return "";
-                        }
-                        let result = "";
-                        switch (status) {
-                            case 2:
-                                result = "Open";
-                                break;
-                            case 3:
-                                result = "Pending";
-                                break;
-                            case 4:
-                                result = "Resolved";
-                                break;
-                            case 5:
-                                result = "Closed";
-                                break;
-                            case 7:
-                                result = "Waiting for 3rd party";
-                                break;
-                            case 8:
-                                result = "New";
-                                break;
-                            case 9:
-                                result = "Waiting for maintenance";
-                                break;
-                        }
-                        return result;
                     }
                 }
                 
