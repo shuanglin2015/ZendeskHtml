@@ -313,22 +313,31 @@
                 this.funcCodeForTickets = funcCodeForTickets;
                 this.funcCode = funcCode;
                 this.funcCodeForJsonById = funcCodeForJsonById;
-                if (this.zendeskBaseUrl && zendesk_country && zendesk_bcn) {
-                    this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
+
+                console.log(`${this.pageTitle} - zendesk_ticketIdParam: ${zendesk_ticketIdParam}`);
+                if (zendesk_ticketIdParam) {
+                    this.record = await this.getTicket(zendeskBaseUrl, funcCode, zendesk_ticketIdParam);
+                    items.push(this.record);
+                    this.items = items;
+                    this.hideLoadingPage();
                 } else {
-                    setTimeout(() => {
-                        console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
-                        console.log(`${this.pageTitle} - try again - zendesk_bcn: ${zendesk_bcn}`);
-                        let message = 'try to start getTickets function for the second time';
-                        console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
-                        if (zendesk_country && zendesk_bcn) {
-                            this.notFoundMessage = '';
-                            this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
-                        } else {
-                            this.notFoundMessage = "Account Country and BCN are required to find related tickets.";
-                            this.hideLoadingPage();
-                        }
-                    }, 2000);
+                    if (this.zendeskBaseUrl && zendesk_country && zendesk_bcn) {
+                        this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
+                    } else {
+                        setTimeout(() => {
+                            console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
+                            console.log(`${this.pageTitle} - try again - zendesk_bcn: ${zendesk_bcn}`);
+                            let message = 'try to start getTickets function for the second time';
+                            console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
+                            if (zendesk_country && zendesk_bcn) {
+                                this.notFoundMessage = '';
+                                this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
+                            } else {
+                                this.notFoundMessage = "Account Country and BCN are required to find related tickets.";
+                                this.hideLoadingPage();
+                            }
+                        }, 2000);
+                    }
                 }
             },
             methods: {
@@ -459,12 +468,7 @@
                             }
                             this.selectedIdAndSubject = selected;
                             let ticketId = getTicketId(this.selectedIdAndSubject);
-                            console.log(`${pageTitle} - ticketIdParam: ${zendesk_ticketIdParam}`);
-                            if (zendesk_ticketIdParam) {
-                                ticketId = zendesk_ticketIdParam;
-                                zendesk_ticketIdParam = '';
-                            }
-                            console.log(`${pageTitle} - ticketId: ${ticketId}`);
+                            console.log(`${pageTitle} - ticketId in getTickets(): ${ticketId}`);
                             this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId);
                             if (this.record) {
                                 let subjectGet = this.record['subject'];
@@ -506,6 +510,7 @@
                     if (!record && this.selectOptions.length === 0) {
                         this.notFoundMessage = `No ticket found for ${zendesk_bcn}`;
                     }
+
                     this.hideLoadingPage();
                 },
 
