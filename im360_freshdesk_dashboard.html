@@ -226,6 +226,20 @@
                                     const objBCN = result.custom_fields && result.custom_fields.find(item => item.id === bcnFieldId);
                                     const bcnValue = objBCN ? objBCN.value : '';
                                     result.strBCN = bcnValue ? await this.getCustomFieldValue(bcnFieldId, bcnValue) : '-';
+
+                                    let jsonPath = 'users';
+                                    let jsonId = result.requester_id;
+                                    let userData = jsonId ? await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                    result.requesterEmail = userData.user ? userData.user.email : '-';
+                                    result.requesterName = userData.user ? userData.user.name : '-';
+
+                                    let domainFieldId = isStage ? 31042462931476 : 34698829065236;
+                                    const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
+                                    const domainValue = objDomain ? objDomain.value : '';
+                                    result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '-';
+
+                                    let accountData = await this.getAccountIdByCountryAndBCN(result.strCountry, result.strBCN);
+                                    result.strAccountId = accountData ? accountData.accountid : '';
                                 }
                             });
 
@@ -233,12 +247,16 @@
                                 items.forEach(item => {
                                     if (item && item.id && item.subject && Object.keys(item).length > 0) {
                                         let itemNew = {
-                                            TicketId: item.id,
-                                            'Reseller Country': item.strCountry,
-                                            'Reseller BCN': item.strBCN,
-                                            Subject: item.subject,
-                                            Status: item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
-                                            Priority: item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-'
+                                            'TicketId': item.id,
+                                            'Country': item.strCountry,
+                                            'Ingram BCN#': item.strBCN,
+                                            'Partner email address': item.requesterEmail,
+                                            'Reseller Name': item.requesterName,
+                                            'Ticket subject line': item.subject,
+                                            'Status': item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
+                                            'Domain': item.strDomain,
+                                            'Priority': item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-',
+                                            'AccountId': item.strAccountId
                                         };
 
                                         console.log(`${this.pageTitle} - item after adding more fields: ${JSON.stringify(itemNew)}`);
@@ -273,6 +291,41 @@
                             result = response.data ? response.data : '';
                         }
                         return result;
+                    },
+
+                    async getAccountIdByCountryAndBCN(strCountry, strBCN) {
+                        let fetchXml = `<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                                            <entity name='account'> \
+                                                <attribute name='accountid' /> \
+                                                <attribute name='im360_bcn' /> \
+                                                <link-entity name='im360_country' from='im360_countryid' to='im360_country' link-type='inner'> \
+                                                    <attribute name='im360_name' alias='CountryName' /> \
+                                                    <filter type='and'> \
+                                                        <condition attribute='im360_name' operator='eq' value='${strCountry}' /> \
+                                                    </filter> \
+                                                </link-entity> \
+                                                <filter type='and'> \
+                                                    <condition attribute='im360_bcn' operator='eq' value='${strBCN}' /> \
+                                                </filter> \
+                                            </entity> \
+                                        </fetch>`;
+
+                        let pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null) {
+                                    return result.entities[0];
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get AccountId by Country and BCN.`);
+                                    return null;
+                                }
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage();
+                                return null;
+                            }
+                        );
                     },
 
                     generateDatagrid(ticketsArr) {
@@ -310,13 +363,13 @@
                             onSelectionChanged: function (selectedItems) {
                                 let data = selectedItems.selectedRowsData[0];
                                 console.log(`${pageTitle} - onSelectionChanged -> data: ${JSON.stringify(data)}`);
-                                //let accountId = getAccountIdByCountryAndBCN(data['Account Name']);
-                                let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';
+                                /*let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';*/
+                                let accountId = data.AccountId;
                                 let ticketId = data.TicketId;
                                 let url = window.location.protocol + "//" + window.location.host + "/";
                                 let fieldName = 'im360_newnavigationtab';
                                 let tabName = 'tab_freshdesk';    
-                                let selectedResellerId = data['CMP Account ID'].toString();
+                                let selectedResellerId = data['Ingram BCN#'];
                                 let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                 console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
                                 window.open(fullUrl, '_blank');
