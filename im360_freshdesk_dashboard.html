@@ -278,19 +278,27 @@
                         let jsonId = fieldId;
                         let jsonPath = 'ticket_fields/';
                         let fieldData = fieldId ? await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                        if (fieldData && fieldData.ticket_field && fieldData.ticket_field.custom_field_options) {
-                            const obj = fieldData.ticket_field.custom_field_options.find(item => item.value === fieldValue);
-                            result = obj ? obj.name : fieldValue;
+                        if (fieldData == '-') {
+                            result = fieldData;
+                        } else {
+                            if (fieldData && fieldData.ticket_field && fieldData.ticket_field.custom_field_options) {
+                                const obj = fieldData.ticket_field.custom_field_options.find(item => item.value === fieldValue);
+                                result = obj ? obj.name : fieldValue;
+                            }
                         }
                         return result;
                     },
 
                     async getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) {
-                        let result = 'N/A';
+                        let result = '-';
                         if (jsonId && jsonId !== 'null') {
-                            const response = await axios.get(`${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`);
-
-                            result = response.data ? response.data : '';
+                            try {
+                                const response = await axios.get(`${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`);
+                                result = response.data ? response.data : '';
+                            } catch (e) {
+                                console.error(`${this.pageTitle} - getJsonById error for jsonId ${jsonId}: ${e.message}`);
+                                result = `[API Error for jsonPath ${jsonPath} and jsonId ${jsonId}]`;
+                            }
                         }
                         return result;
                     },
