@@ -221,6 +221,8 @@
         let zendesk_country = '';
         let zendesk_bcn = '';
         let zendesk_ticketIdParam = '';
+        let appId = '';
+        let dashboardId = '';
 
         function setClientApiContext(Xrm, context, accountBCN, newnavigationtab) {
             var pageTitle = 'Zendesk';
@@ -285,6 +287,8 @@
                 if (zendeskConfig) {
                     this.zendeskBaseUrl = zendeskConfig.im360_value;
                     funcCodeString = zendeskConfig.im360_value2;
+                    this.appId = zendeskConfig.im360_value3;
+                    console.log(`${this.pageTitle} - appId from FreshdeskAPI configuration: ${this.appId}`);
                 } else {
                     console.error(`${this.pageTitle} - zendeskConfig is null`);
                     this.hideLoadingPage();
@@ -299,10 +303,12 @@
                     isStage = false;
                 }
                 let funcCodeArr = funcCodeString.toString().split(';;;;');
-                let funcCodeForTickets = funcCodeArr[2];
-                let funcCode = funcCodeArr[0];
-                let funcCodeForComments = funcCodeArr[1];
-                let funcCodeForJsonById = funcCodeArr[3];
+                let funcCodeForTickets = funcCodeArr.length > 2 && funcCodeArr[2];
+                let funcCode = funcCodeArr.length > 0 && funcCodeArr[0];
+                let funcCodeForComments = funcCodeArr.length > 1 && funcCodeArr[1];
+                let funcCodeForJsonById = funcCodeArr.length > 3 && funcCodeArr[3];
+                this.dashboardId = funcCodeArr.length > 4 && funcCodeArr[4];
+                console.log(`${this.pageTitle} - dashboardId from FreshdeskAPI configuration: ${this.dashboardId}`);
                 this.funcCodeForComments = funcCodeForComments;
                 this.funcCodeForTickets = funcCodeForTickets;
                 this.funcCode = funcCode;
@@ -507,7 +513,13 @@
                     if (this.selectedIdAndSubject === 'View more tickets...') {
                         this.showLoadingPage();
                         // refresh:
-                        this.getTickets(this.zendeskBaseUrl, this.funcCode, this.funcCodeForTickets, '', 100, this.hideLoadingPage);
+                        // this.getTickets(this.zendeskBaseUrl, this.funcCode, this.funcCodeForTickets, '', 100, this.hideLoadingPage);
+                        let url = window.location.protocol + "//" + window.location.host + "/";
+                        let fullUrl = `${url}/main.aspx?appid=${this.appId}&pagetype=dashboard&id=${this.dashboardId}&type=system&_canOverride=true`;
+                        console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
+                        localStorage.setItem('zendesk_country_name', zendesk_country);
+                        localStorage.setItem('zendesk_bcn', zendesk_bcn);
+                        window.open(fullUrl, '_blank');
                         return;
                     } else {
                         const ticketId = getTicketId(this.selectedIdAndSubject);

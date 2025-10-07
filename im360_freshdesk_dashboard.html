@@ -198,6 +198,7 @@
                         if (response && response.data) {
                             let itemsWithoutCountryFilter = response.data.results;
                             if (zendeskCountryName) {
+                                let itemsWithCountryFilter = [];
                                 await asyncForEach(itemsWithoutCountryFilter, async ticket => {
                                     let countryFieldId = isStage ? 31959436739604 : 35138178531732;
                                     const objCountry = ticket.custom_fields && ticket.custom_fields.find(item => item.id === countryFieldId);
@@ -205,9 +206,10 @@
                                     let strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '-';
                                     if (strCountry && zendeskCountryName && (strCountry.toLowerCase().trim() == zendeskCountryName.toLowerCase().trim())) {
                                         ticket.strCountry = strCountry;
-                                        items.push(ticket);
+                                        itemsWithCountryFilter.push(ticket);
                                     }
                                 });
+                                items = itemsWithCountryFilter;
                             } else {
                                 items = itemsWithoutCountryFilter;
                             }
