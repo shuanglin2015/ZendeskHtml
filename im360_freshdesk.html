@@ -524,6 +524,7 @@
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
                         localStorage.setItem('zendesk_country_name', zendesk_country);
                         localStorage.setItem('zendesk_bcn', zendesk_bcn);
+                        this.hideLoadingPage();
                         window.open(fullUrl, '_blank');
                         return;
                     } else {
