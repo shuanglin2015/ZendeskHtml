@@ -309,6 +309,8 @@
                 this.funcCode = funcCode;
                 this.funcCodeForJsonById = funcCodeForJsonById;
 
+                // await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2 seconds to ensure zendesk_ticketIdParam variables are set
+
                 console.log(`${this.pageTitle} - zendesk_ticketIdParam: ${zendesk_ticketIdParam}`);
                 if (zendesk_ticketIdParam) {
                     this.record = await this.getTicket(zendeskBaseUrl, funcCode, zendesk_ticketIdParam);
@@ -334,6 +336,7 @@
                         }, 2000);
                     }
                 }
+
             },
             methods: {
                 async getZendeskConfig() {
