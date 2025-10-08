@@ -90,19 +90,8 @@
                         console.log(`${this.pageTitle} - zendeskCountryName from localStorage: ${zendeskCountryName}`);
                         console.log(`${this.pageTitle} - zendeskBCN from localStorage: ${zendeskBCN}`);
 
-                        //let ticketsArr = [];
-                        //accountsData = await this.getAccountsData();
-
-                        // let zendeskBCN = '20666904';
+                        /* let zendeskBCN = '20666904'; */
                         let tickets = await this.getTickets(zendeskCountryName, zendeskBCN);
-
-                        // await asyncForEach(accountsData, async account => {
-                        //     let tickets = await this.getTickets(account);
-                        //     if (tickets.length > 0) {
-                        //         ticketsArr = ticketsArr.concat(tickets);
-                        //     }
-                        // });
-
                         console.log(`${this.pageTitle} - tickets: ${JSON.stringify(tickets)}`);
                         this.generateDatagrid(tickets); 
                     } else {
@@ -143,41 +132,6 @@
                         );
                     },
 
-
-
-                    // async getAccountsData() {
-                    //     let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                    //           <entity name = 'account' > \
-                    //             <attribute name='accountid' /> \
-                    //             <attribute name='name' /> \
-                    //             <attribute name='im360_armid' /> \
-                    //             <filter type='and'> \
-                    //               <condition attribute='im360_cloudowner' operator='eq-userid' /> \
-                    //               <condition attribute='im360_armid' operator='not-null' /> \
-                    //             </filter> \
-                    //             <order attribute='name' descending='false' /> \
-                    //           </entity > \
-                    //         </fetch >";
-
-                    //     let pageTitle = this.pageTitle;
-                    //     return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
-                    //         function success(result) {
-                    //             if (result != null) {
-                    //                 console.log(`${pageTitle} - accounts result: ${JSON.stringify(result)}`);
-                    //                 return result.entities;
-                    //             } else {
-                    //                 console.error(`${pageTitle} - accounts data is empty.`);
-                    //                 return null;
-                    //             }
-                    //         },
-                    //         function (error) {
-                    //             console.error(`${pageTitle} - ${error.message}`);
-                    //             this.hideLoadingPage();
-                    //             return null;
-                    //         }
-                    //     );
-                    // },
-
                     async getTickets(zendeskCountryName, zendeskBCN) {
                         let results = [];
 
@@ -213,7 +167,6 @@
                             } else {
                                 items = itemsWithoutCountryFilter;
                             }
-                            // let items = response.data.results;
 
                             await asyncForEach(items, async result => {
                                 if (result && result.id && result.subject) {
