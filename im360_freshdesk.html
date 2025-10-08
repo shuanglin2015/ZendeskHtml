@@ -199,18 +199,13 @@
                                 </div>
                                 <div style="margin-left: 20px;" v-html="groupByMonthTickets"></div>
 
-                                <!-- <div>
-                                    Total tickets group by Queue:
-                                </div>
-                                <div style="margin-left: 20px;" v-html="groupByQueueTickets"></div> -->
-
                                 <div v-if="averageResolveTime">
                                     Average time to resolve ticket:
                                 </div>
                                 <div v-if="averageResolveTime" style="margin-left: 20px;" v-html="averageResolveTime"></div>
                             </el-collapse-item>
                         </el-collapse>
-</el-row>
+                </el-row>
             </div>
 
         </div>
@@ -490,7 +485,6 @@
                             this.ticketSummary = this.getTicketSummary(items);
                             if (this.ticketSummary.length > 0) {
                                 this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
-                                //this.groupByQueueTickets = await this.getGroupByQueueTickets(zendeskBaseUrl, funcCode, this.ticketSummary);
                                 const averageTime = await this.getAverageResolveTime(zendeskBaseUrl, funcCode, items, this.funcCodeForJsonById);
 
                                 const averageDays = Math.floor(averageTime / 24);
@@ -639,9 +633,7 @@
                 //             issueType = 'Error - multiple issue types found';
                 //         }
                 //     }
-
                 //     return issueType;
-
                 // },
 
                 async getCustomFieldValue(fieldId, fieldValue) {
@@ -656,28 +648,6 @@
                     return result;
                 },
 
-                
-
-                // async getGroupName(groupId, zendeskBaseUrl, funcCode) {
-                //     let result = 'N/A';
-                //     if (groupId && groupId !== 'null') {
-                //         const response = await axios.get(`${zendeskBaseUrl}/getDataById?code=${funcCode}&category=groups&itemId=${groupId}`);
-
-                //         result = response.data ? response.data.name : '';
-                //     }
-                //     return result;
-                // },
-
-                // async getAgentName(responderId, zendeskBaseUrl, funcCode) {
-                //     let result = '';
-                //     if (responderId && responderId !== 'null') {
-                //         const response = await axios.get(`${zendeskBaseUrl}/getDataById?code=${funcCode}&category=agents&itemId=${responderId}`);
-
-                //         result = response.data && response.data.contact ? response.data.contact.name : '';
-                //     }
-                //     return result;
-                // },
-
                 refresh() {
                     this.showLoadingPage();
                     this.getTickets(this.zendeskBaseUrl, this.funcCode, this.funcCodeForTickets, '', 100, this.hideLoadingPage);
@@ -690,7 +660,7 @@
 
                     let result = response.data;
                     if (result) {
-                        result = convertValue(result);
+                        // result = convertValue(result);
 
                         if (result && result.ticket) {
                             result = {
@@ -703,9 +673,6 @@
                         let jsonId = result.requester_id;
                         let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
                         result.requesterEmail = userData.user ? userData.user.email : '';
-
-                        //result.strQueue = await this.getGroupName(result.group_id, zendeskBaseUrl, this.funcCode);
-                        //result.strAgent = await this.getAgentName(result.responder_id, zendeskBaseUrl, this.funcCode);
 
                         let jsonIdForAssignee = result.assignee_id;
                         let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
@@ -806,27 +773,6 @@
                     return result;
                 },
 
-                // async getGroupByQueueTickets(zendeskBaseUrl, funcCode, ticketSummaryParam) {
-                //     let result = '';
-                //     try {
-                //         const groupByQueue = groupBy("groupId");
-                //         const queueTickets = groupByQueue(ticketSummaryParam);
-                //         await asyncForEach(Object.keys(queueTickets), async key => {
-                //             if (result && result.length > 0) {
-                //                 result += '<br>';
-                //             }
-                //             let keyName = await this.getGroupName(key, zendeskBaseUrl, funcCode);
-                //             result += keyName;
-                //             result += ': ';
-                //             result += `<b>${queueTickets[key]}</b>`;
-                //         });
-                //     } catch (err) {
-                //         console.error(`${this.pageTitle} - getGroupByQueueTickets error`);
-                //         this.hideLoadingPage();
-                //     }
-                //     return result;
-                // },
-
                 async getAverageResolveTime(zendeskBaseUrl, funcCode, itemsParam, funcCodeForJsonById) {
                     const result = [];
                     let finalResult = 0;
@@ -876,17 +822,6 @@
         const getTicketId = (selectedIdAndSubject) => {
             const ticketId = selectedIdAndSubject ? selectedIdAndSubject.substring(0, selectedIdAndSubject.indexOf('.')) : '';
             return ticketId;
-        }
-
-        const convertValue = (item) => {
-            if (!item) {
-                return null;
-            }
-
-            item.strProduct = item.custom_fields ? item.custom_fields.cf_product : '';  // not "product_id"
-            item.strAgent = '';   // Agent
-            item.strQueue = '';   // Group
-            return item;
         }
 
         const groupBy = (key) => {
