@@ -164,7 +164,7 @@
                 </div>
             </div>
 
-            <div v-if="record && record.subject">
+            <!-- <div v-if="record && record.subject">
                 <div v-if="record && record.ticket_metric" class="recordTags">
                     <strong class="boldInMinutes">Ticket Metrics </strong>
                 </div>
@@ -182,7 +182,7 @@
                     {{record.ticket_metric.full_resolution_time_in_minutes.calendar ? record.ticket_metric.full_resolution_time_in_minutes.calendar : '0'}}
                 </div>
                 <br>
-            </div>
+            </div> -->
             
             <div v-if="!notFoundMessage" class="collapse-ticket-summary">
                 <el-row>
@@ -473,12 +473,12 @@
                                 this.selectedIdAndSubject = `${ticketId}.${subjectGet}`;
                                 console.log(`${pageTitle} - subjectGet: ${subjectGet}`);
 
-                                let jsonId = 'metrics';
-                                let jsonPath = `tickets/${ticketId}`;
-                                let metricsData = ticketId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                                if (metricsData) {
-                                    this.record.ticket_metric = metricsData.ticket_metric;
-                                }
+                                // let jsonId = 'metrics';
+                                // let jsonPath = `tickets/${ticketId}`;
+                                // let metricsData = ticketId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                // if (metricsData) {
+                                //     this.record.ticket_metric = metricsData.ticket_metric;
+                                // }
                                 //this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
                             }
                         } else {
@@ -527,12 +527,12 @@
                     } else {
                         const ticketId = getTicketId(this.selectedIdAndSubject);
                         this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId);
-                        let jsonId = 'metrics';
-                        let jsonPath = `tickets/${ticketId}`;
-                        let metricsData = ticketId ? await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                        if (metricsData) {
-                            this.record.ticket_metric = metricsData.ticket_metric;
-                        }
+                        // let jsonId = 'metrics';
+                        // let jsonPath = `tickets/${ticketId}`;
+                        // let metricsData = ticketId ? await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                        // if (metricsData) {
+                        //     this.record.ticket_metric = metricsData.ticket_metric;
+                        // }
                         //this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
                     }
                 },
