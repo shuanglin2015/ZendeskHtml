@@ -194,7 +194,7 @@
                                     result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '-';
 
                                     let accountData = await this.getAccountIdByCountryAndBCN(result.strCountry, result.strBCN);
-                                    result.strAccountId = accountData ? accountData.accountid : '';
+                                    result.strAccountId = accountData ? accountData.accountid : '-';
                                 }
                             });
 
@@ -203,15 +203,15 @@
                                     if (item && item.id && item.subject && Object.keys(item).length > 0) {
                                         let itemNew = {
                                             'TicketId': item.id,
-                                            'Country': item.strCountry,
-                                            'Ingram BCN#': item.strBCN,
-                                            'Partner email address': item.requesterEmail,
-                                            'Reseller Name': item.requesterName,
-                                            'Ticket subject line': item.subject,
+                                            'Country': item.strCountry ? item.strCountry : '-',
+                                            'Ingram BCN#': item.strBCN ? item.strBCN : '-',
+                                            'Partner email address': item.requesterEmail ? item.requesterEmail : '-',
+                                            'Reseller Name': item.requesterName ? item.requesterName : '-',
+                                            'Ticket subject line': item.subject ? item.subject : '-',
                                             'Status': item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
-                                            'Domain': item.strDomain,
+                                            'Domain': item.strDomain ? item.strDomain : '-',
                                             'Priority': item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-',
-                                            'AccountId': item.strAccountId
+                                            'AccountId': item.strAccountId ? item.strAccountId : '-'
                                         };
 
                                         console.log(`${this.pageTitle} - item after adding more fields: ${JSON.stringify(itemNew)}`);
@@ -239,7 +239,7 @@
                                 result = obj ? obj.name : fieldValue;
                             }
                         }
-                        return result;
+                        return result ? result : '-';
                     },
 
                     async getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) {
