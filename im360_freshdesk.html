@@ -30,9 +30,9 @@
                           :options="selectOptions" />
             </div>
 
-            <div class="expand-button">
+            <!-- <div class="expand-button">
                 <img src="im360_refresh.png" v-on:click="refresh" class="expand-image" title="Retrieve more tickets" />
-            </div>
+            </div> -->
 
             <div v-if="notFoundMessage" class="not-found">
                 {{notFoundMessage}}
@@ -791,7 +791,7 @@
                                 if (metricsData && metricsData.ticket_metric) {
                                     const closedAt = metricsData.ticket_metric.solved_at;
                                     if (closedAt) {
-                                        const utcCreated = getUTC(createdAt, ticket.id);
+                                        const utcCreated = getUTC(createdAt);
                                         const utcClosed = getUTC(closedAt);
                                         const hours = Math.floor(utcClosed - utcCreated) / (1000 * 60 * 60);
                                         result.push(hours);
@@ -816,7 +816,7 @@
             }
         });
 
-        const getUTC = (strDateParam, ticketId) => {
+        const getUTC = (strDateParam) => {
             const dateParam = new Date(strDateParam);
             const result = Date.UTC(dateParam.getFullYear(), dateParam.getMonth(), dateParam.getDate(), dateParam.getHours());
             return result;
