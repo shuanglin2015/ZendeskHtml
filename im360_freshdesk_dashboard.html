@@ -24,7 +24,7 @@
                     <img src="im360_Loading.gif" />
                 </div>
             </div>
-            <div title="Click the row to redirect to the ticket detail tab if the 'Account Id' is not empty">
+            <div title="Click a row to view the ticket's detail tab.">
               <div id="gridContainer"></div>
             </div>
         </div>
@@ -220,9 +220,9 @@
                             showRowLines: true,
                             showScrollbar: true,
                             useNative: false,
-                            onSelectionChanged: function (selectedItems) {
-                                let data = selectedItems.selectedRowsData[0];
-                                console.log(`${pageTitle} - onSelectionChanged -> data: ${JSON.stringify(data)}`);
+                            onRowClick: function (e) {
+                                let data = e.data; // selectedItems.selectedRowsData[0];
+                                console.log(`${pageTitle} - onRowClick -> data: ${JSON.stringify(data)}`);
                                 /*let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';*/
                                 let accountId = data.AccountId;
                                 if (accountId && accountId != '-') {
@@ -234,6 +234,8 @@
                                     let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                     console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
                                     window.open(fullUrl, '_blank');
+                                } else {
+                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Account Id is not available. Unable to load account details." })
                                 }
                                 return null;
                             }
