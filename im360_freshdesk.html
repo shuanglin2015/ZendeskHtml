@@ -30,10 +30,6 @@
                           :options="selectOptions" />
             </div>
 
-            <!-- <div class="expand-button">
-                <img src="im360_refresh.png" v-on:click="refresh" class="expand-image" title="Retrieve more tickets" />
-            </div> -->
-
             <div v-if="notFoundMessage" class="not-found">
                 {{notFoundMessage}}
             </div>
@@ -58,11 +54,6 @@
                         {{record.requesterEmail}}
                     </div>
                     
-                    <!-- <div v-if="record.tags && record.tags[0]" class="recordTags">
-                        <strong class="boldTags">Tags:</strong>
-                        {{record.tags.length > 0 ? record.tags : ''}}
-                    </div> -->
-
                    <table v-if="record && record.custom_fields" aria-describedby="ticketDetails" class="details">
                         <tr>
                             <th id="1">Agent</th>
@@ -527,13 +518,6 @@
                     } else {
                         const ticketId = getTicketId(this.selectedIdAndSubject);
                         this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId);
-                        // let jsonId = 'metrics';
-                        // let jsonPath = `tickets/${ticketId}`;
-                        // let metricsData = ticketId ? await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                        // if (metricsData) {
-                        //     this.record.ticket_metric = metricsData.ticket_metric;
-                        // }
-                        //this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
                     }
                 },
 
@@ -560,85 +544,6 @@
                     return result;
                 },
 
-                // getIssueType(result, isStageInstance) {
-                //     let issueType = '';
-                //     let issueTypeIds = [34811885834260, 34811954493716, 34812292526612, 34812336427028, 34699417128340];
-                //     if (isStageInstance) {
-                //        issueTypeIds = [34812503928980, 34812521159316, 38816279478932, 34812589895316, 34812614350228, 34750532695700];         
-                //     }
-
-                //     let isAllNull = true;
-                //     if (result && result.custom_fields) {
-                //         const customFields = result.custom_fields;
-                //         customFields.forEach(field => {
-                //             issueTypeIds.forEach(id => {
-                //                 if (field.id === id) {
-                //                     if (field.value !== null) {
-                //                         isAllNull = false
-                //                     }
-                //                 }
-                //             });
-                //         });
-                //     }
-                //     if (isAllNull) {
-                //         return 'null';
-                //     }
-
-                //     let isAllReviewAndUpdate = true;
-                //     let reviewAndUpdate = 'platform_review_and_update';
-                //     if (result && result.custom_fields) {
-                //         const customFields = result.custom_fields;
-                //         customFields.forEach(field => {
-                //             issueTypeIds.forEach(id => {
-                //                 if (field.id === id) {
-                //                     if (field.value !== reviewAndUpdate) {
-                //                         isAllReviewAndUpdate = false
-                //                     }
-                //                 }
-                //             });
-                //         });
-                //     }
-                //     if (isAllReviewAndUpdate) {
-                //         return reviewAndUpdate;
-                //     } 
-
-                //     //3. one of the fields set to a value different from #1 and #2 -> display this value in Issue Type
-                //     if (result && result.custom_fields) {
-                //         const customFields = result.custom_fields;
-                //         customFields.forEach(field => {
-                //             issueTypeIds.forEach(id => {
-                //                 if (field.id === id) {
-                //                     if (field.value !== null && field.value !== reviewAndUpdate) {
-                //                         issueType = field.value;
-                //                     }
-                //                 }
-                //             });
-                //         });
-                //     }
-
-                //     // >1 field set to a value different from #1 and #2 -> display error (should not happen) and >1 values
-                //     if (issueType && issueType.length > 0) {
-                //         let count = 0;
-                //         if (result && result.custom_fields) {
-                //             const customFields = result.custom_fields;
-                //             customFields.forEach(field => {
-                //                 issueTypeIds.forEach(id => {
-                //                     if (field.id === id) {
-                //                         if (field.value !== null && field.value !== reviewAndUpdate) {
-                //                             count++;
-                //                         }
-                //                     }
-                //                 });
-                //             });
-                //         }
-                //         if (count > 1) {
-                //             console.error(`${this.pageTitle} - More than one Issue Type values found for ticket ${result.id}`);
-                //             issueType = 'Error - multiple issue types found';
-                //         }
-                //     }
-                //     return issueType;
-                // },
-
                 async getCustomFieldValue(fieldId, fieldValue) {
                     let result = fieldValue;
                     let jsonId = fieldId;
@@ -649,11 +554,6 @@
                         result = obj ? obj.name : fieldValue;
                     }
                     return result;
-                },
-
-                refresh() {
-                    this.showLoadingPage();
-                    this.getTickets(this.zendeskBaseUrl, this.funcCode, this.funcCodeForTickets, '', 100, this.hideLoadingPage);
                 },
 
                 async getTicket(zendeskBaseUrl, funcCode, ticketId) {
@@ -688,7 +588,6 @@
                                 result.author_email = userData.user ? userData.user.email : '';
                             }
                         }
-                        //result.issueType = this.getIssueType(result, isStage);
                         
                         let domainFieldId = isStage ? 31042462931476 : 34698829065236;
                         const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
