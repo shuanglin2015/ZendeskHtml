@@ -189,11 +189,6 @@
                                     Total tickets group by month:
                                 </div>
                                 <div style="margin-left: 20px;" v-html="groupByMonthTickets"></div>
-
-                                <div v-if="averageResolveTime">
-                                    Average time to resolve ticket:
-                                </div>
-                                <div v-if="averageResolveTime" style="margin-left: 20px;" v-html="averageResolveTime"></div>
                             </el-collapse-item>
                         </el-collapse>
                 </el-row>
@@ -253,7 +248,6 @@
                 ticketSummary: [],
                 groupByMonthTickets: '',
                 groupByQueueTickets: '',
-                averageResolveTime: '',
             },
             async mounted() {
                 if (!zendesk_country || !zendesk_bcn){
@@ -479,16 +473,6 @@
                             this.ticketSummary = this.getTicketSummary(items);
                             if (this.ticketSummary.length > 0) {
                                 this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
-                                const averageTime = await this.getAverageResolveTime(zendeskBaseUrl, funcCode, items, this.funcCodeForJsonById);
-
-                                const averageDays = Math.floor(averageTime / 24);
-                                const averageHours = Math.round(averageTime % 24);
-                                let averageResolvedTime = '';
-                                if (averageDays > 0) {
-                                    averageResolvedTime = `<b>${averageDays}</b> days `;
-                                }
-                                averageResolvedTime += `<b>${averageHours}</b> hours.`;
-                                this.averageResolveTime = averageResolvedTime;
                             }
                         }
                     } else {
@@ -673,44 +657,6 @@
                         this.hideLoadingPage();
                     }
                     return result;
-                },
-
-                async getAverageResolveTime(zendeskBaseUrl, funcCode, itemsParam, funcCodeForJsonById) {
-                    const result = [];
-                    let finalResult = 0;
-                    let jsonId = 'metrics';
-
-                    try {
-                        await asyncForEach(itemsParam, async ticket => {
-                            if (ticket.status === 'solved' || ticket.status === 'closed') {
-                                const createdAt = ticket.created_at;
-                                
-                                let jsonPath = `tickets/${ticket.id}`;
-                                let metricsData = ticket.id ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) : '';
-                                if (metricsData && metricsData.ticket_metric) {
-                                    const closedAt = metricsData.ticket_metric.solved_at;
-                                    if (closedAt) {
-                                        const utcCreated = getUTC(createdAt);
-                                        const utcClosed = getUTC(closedAt);
-                                        const hours = Math.floor(utcClosed - utcCreated) / (1000 * 60 * 60);
-                                        result.push(hours);
-                                    }
-                                }
-                            }
-                        });
-
-                        if (result.length > 0) {
-                            let sum = 0;
-                            result.forEach(item => {
-                                sum += item;
-                            });
-                            finalResult = sum / result.length;
-                        }
-                    } catch (err) {
-                        console.error(`${this.pageTitle} - getAverageResolveTime error`);
-                        this.hideLoadingPage();
-                    }
-                    return finalResult;
                 }
             }
         });
