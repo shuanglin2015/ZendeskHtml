@@ -492,7 +492,7 @@
                         // refresh:
                         // this.getTickets(this.zendeskBaseUrl, this.funcCode, this.funcCodeForTickets, '', 100, this.hideLoadingPage);
                         let url = window.location.protocol + "//" + window.location.host + "/";
-                        let fullUrl = `${url}/main.aspx?appid=${this.appId}&pagetype=dashboard&id=${this.dashboardId}&type=system&_canOverride=true`;
+                        let fullUrl = `${url}/main.aspx?appid=${this.appId}&pagetype=dashboard&id=${this.dashboardId}&type=system`;
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
                         localStorage.setItem('zendesk_country_name', zendesk_country);
                         localStorage.setItem('zendesk_bcn', zendesk_bcn);
