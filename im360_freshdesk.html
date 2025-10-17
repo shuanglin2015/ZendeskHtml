@@ -327,6 +327,7 @@
                 async getZendeskConfig() {
                     let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                          <entity name='im360_configuration'> \
+                             <attribute name='im360_configurationid'/> \
                              <attribute name='im360_value'/> \
                              <attribute name='im360_value2'/> \
                              <attribute name='im360_value3'/> \
