@@ -497,6 +497,13 @@
                         localStorage.setItem('zendesk_country_name', zendesk_country);
                         localStorage.setItem('zendesk_bcn', zendesk_bcn);
                         this.hideLoadingPage();
+
+                        if (this.record) {
+                            let id = this.record['id'];
+                            let subjectGet = this.record['subject'];
+                            this.selectedIdAndSubject = `${id}.${subjectGet}`;
+                        }
+
                         window.open(fullUrl, '_blank');
                         return;
                     } else {
