@@ -297,14 +297,23 @@
                 // await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2 seconds to ensure zendesk_ticketIdParam variables are set
 
                 console.log(`${this.pageTitle} - zendesk_ticketIdParam: ${zendesk_ticketIdParam}`);
+
+                let selectedTicketId = localStorage.getItem('zendesk_ticketId');
+                console.log(`${this.pageTitle} - selectedTicketId from localStorage: ${selectedTicketId}`);
+                localStorage.setItem('zendesk_ticketId', '');
+
                 if (zendesk_ticketIdParam) {
-                    this.record = await this.getTicket(zendeskBaseUrl, funcCode, zendesk_ticketIdParam);
-                    items.push(this.record);
-                    this.items = items;
-                    this.hideLoadingPage();
-                } else {
+                    selectedTicketId = zendesk_ticketIdParam;
+                }
+
+                // if (selectedTicketId) {
+                //     this.record = await this.getTicket(zendeskBaseUrl, funcCode, zendesk_ticketIdParam);
+                //     items.push(this.record);
+                //     this.items = items;
+                //     this.hideLoadingPage();
+                // } else {
                     if (this.zendeskBaseUrl && zendesk_country && zendesk_bcn) {
-                        this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
+                        this.getTickets(selectedTicketId, zendeskBaseUrl, funcCode, funcCodeForTickets);
                     } else {
                         setTimeout(() => {
                             console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
@@ -313,14 +322,14 @@
                             console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
                             if (zendesk_country && zendesk_bcn) {
                                 this.notFoundMessage = '';
-                                this.getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets);
+                                this.getTickets(selectedTicketId, zendeskBaseUrl, funcCode, funcCodeForTickets);
                             } else {
                                 this.notFoundMessage = "Account Country and BCN are required to find related tickets.";
                                 this.hideLoadingPage();
                             }
                         }, 2000);
                     }
-                }
+                // }
 
             },
             methods: {
@@ -410,7 +419,7 @@
                     return valueid;
                 },
 
-                async getTickets(zendeskBaseUrl, funcCode, funcCodeForTickets, selected, limit = '10') {
+                async getTickets(selectedTicketId, zendeskBaseUrl, funcCode, funcCodeForTickets, selected = null, limit = '10') {
                     let pageTitle = this.pageTitle;
                     console.log(`${pageTitle} -  getTickets started...`);
 
@@ -440,7 +449,22 @@
                         this.items = items;
                         if (items && items.length > 0) {
                             if (!selected) {
-                                selected = `${items[0]['id']}.${items[0]['subject']}`;
+                                if (selectedTicketId) {
+                                    items.forEach(item => {
+                                        if(item['id'] && (item['id'].toString() == selectedTicketId)) {
+                                            selected = `${item['id']}.${item['subject']}`;
+                                        }
+                                    });
+
+                                    if (!selected) {
+                                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, selectedTicketId);
+                                        items.push(this.record);
+                                        selected = `${this.record['id']}.${this.record['subject']}`;
+                                    }
+                                } else {
+                                    selected = `${items[0]['id']}.${items[0]['subject']}`;
+                                }
+
                                 this.selectOptions.length = 0;
                                 items.forEach(item => {
                                     this.selectOptions.push(`${item.id}.${item.subject}`);
@@ -495,8 +519,8 @@
                         let url = window.location.protocol + "//" + window.location.host + "/";
                         let fullUrl = `${url}/main.aspx?appid=${this.appId}&pagetype=dashboard&id=${this.dashboardId}&type=system`;
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
-                        localStorage.setItem('zendesk_country_name', zendesk_country);
-                        localStorage.setItem('zendesk_bcn', zendesk_bcn);
+                        // localStorage.setItem('zendesk_country_name', zendesk_country);
+                        // localStorage.setItem('zendesk_bcn', zendesk_bcn);
                         this.hideLoadingPage();
 
                         if (this.record) {

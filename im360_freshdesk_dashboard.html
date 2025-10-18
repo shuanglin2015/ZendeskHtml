@@ -233,6 +233,7 @@
                                     let selectedResellerId = data['Ingram BCN#'];
                                     let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                     console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
+                                    localStorage.setItem('zendesk_ticketId', ticketId);
                                     window.open(fullUrl, '_blank');
                                 } else {
                                     Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Account Id is not available. Unable to load account details." })
