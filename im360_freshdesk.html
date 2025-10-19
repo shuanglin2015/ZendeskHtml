@@ -154,26 +154,6 @@
                     </ul>
                 </div>
             </div>
-
-            <!-- <div v-if="record && record.subject">
-                <div v-if="record && record.ticket_metric" class="recordTags">
-                    <strong class="boldInMinutes">Ticket Metrics </strong>
-                </div>
-                <div v-if="record && record.ticket_metric && record.ticket_metric.reply_time_in_minutes" class="recordTagsShort">
-                    First reply time in minutes:
-                    {{record.ticket_metric.reply_time_in_minutes.calendar ? record.ticket_metric.reply_time_in_minutes.calendar : '0'}}
-                </div>
-                <div v-if="record && record.ticket_metric && record.ticket_metric.requester_wait_time_in_minutes" class="recordTagsShort">
-                    Requester wait time in minutes:
-                    {{record.ticket_metric.requester_wait_time_in_minutes.calendar ? record.ticket_metric.requester_wait_time_in_minutes.calendar : '0'}}
-                </div>
-
-                <div v-if="record && record.ticket_metric && record.ticket_metric.full_resolution_time_in_minutes" class="recordTagsShort">
-                    Resolution time in minutes:
-                    {{record.ticket_metric.full_resolution_time_in_minutes.calendar ? record.ticket_metric.full_resolution_time_in_minutes.calendar : '0'}}
-                </div>
-                <br>
-            </div> -->
             
             <div v-if="!notFoundMessage" class="collapse-ticket-summary">
                 <el-row>
@@ -313,21 +293,55 @@
                 //     this.hideLoadingPage();
                 // } else {
                     if (this.zendeskBaseUrl && zendesk_country && zendesk_bcn) {
-                        this.getTickets(selectedTicketId, zendeskBaseUrl, funcCode, funcCodeForTickets);
-                    } else {
-                        setTimeout(() => {
-                            console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
-                            console.log(`${this.pageTitle} - try again - zendesk_bcn: ${zendesk_bcn}`);
-                            let message = 'try to start getTickets function for the second time';
-                            console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
-                            if (zendesk_country && zendesk_bcn) {
-                                this.notFoundMessage = '';
-                                this.getTickets(selectedTicketId, zendeskBaseUrl, funcCode, funcCodeForTickets);
-                            } else {
-                                this.notFoundMessage = "Account Country and BCN are required to find related tickets.";
-                                this.hideLoadingPage();
+                        let tickets = await  this.getTickets(selectedTicketId);
+                        if (tickets) {
+                            const {selected, selectOptions, items} = tickets;
+                            this.selected = selected;
+                            this.selectOptions = selectOptions;
+                            this.items = items;
+                            let ticketId = getTicketId(selected);
+                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId);
+                            let id = this.record['id'];
+                            let subjectGet = this.record['subject'];
+                            this.selectedIdAndSubject = `${id}.${subjectGet}`;
+                            if (items && items.length > 0) {
+                                this.ticketSummary = this.getTicketSummary(items);
+                                if (this.ticketSummary.length > 0) {
+                                    this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
+                                }
                             }
-                        }, 2000);
+                        }
+                    } else {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+
+                        console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
+                        console.log(`${this.pageTitle} - try again - zendesk_bcn: ${zendesk_bcn}`);
+                        let message = 'try to start getTickets function for the second time';
+                        console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
+                        if (zendesk_country && zendesk_bcn) {
+                            this.notFoundMessage = '';
+                            let tickets = await  this.getTickets(selectedTicketId);
+                            if (tickets) {
+                                const {selected, selectOptions, items} = tickets;
+                                this.selected = selected;
+                                this.selectOptions = selectOptions;
+                                this.items = items;
+                                let ticketId = getTicketId(selected);
+                                this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId);
+                                let id = this.record['id'];
+                                let subjectGet = this.record['subject'];
+                                this.selectedIdAndSubject = `${id}.${subjectGet}`;
+                                if (items && items.length > 0) {
+                                    this.ticketSummary = this.getTicketSummary(items);
+                                    if (this.ticketSummary.length > 0) {
+                                        this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
+                                    }
+                                }
+                            }
+                        } else {
+                            this.notFoundMessage = "Account Country and BCN are required to find related tickets.";
+                            this.hideLoadingPage();
+                        }
                     }
                 // }
 
@@ -419,96 +433,82 @@
                     return valueid;
                 },
 
-                async getTickets(selectedTicketId, zendeskBaseUrl, funcCode, funcCodeForTickets, selected = null, limit = '10') {
+                async getTickets(selectedTicketId) {
+                    let results = [];
+
+                    let fetchXml = `<fetch top='5000'> \
+                                        <entity name='im360_zendesktickets'> \
+                                            <attribute name='im360_accountid' /> \
+                                            <attribute name='im360_country' /> \
+                                            <attribute name='im360_created_at' /> \
+                                            <attribute name='im360_domain' /> \
+                                            <attribute name='im360_ingrambcn' /> \
+                                            <attribute name='im360_partneremailaddress' /> \
+                                            <attribute name='im360_priority' /> \
+                                            <attribute name='im360_resellername' /> \
+                                            <attribute name='im360_resolved_at' /> \
+                                            <attribute name='im360_resolvehours' /> \
+                                            <attribute name='im360_status' /> \
+                                            <attribute name='im360_ticketid' /> \
+                                            <attribute name='im360_ticketsubjectline' /> \
+                                            <attribute name='im360_updated_at' /> \
+                                                <filter type='and'> \
+                                                    <condition attribute='im360_country' operator='eq' value='${zendesk_country}' /> \
+                                                    <condition attribute='im360_ingrambcn' operator='eq' value='${zendesk_bcn}' /> \
+                                                </filter> \
+                                            <order descending='true' attribute='im360_created_at' /> \
+                                        </entity> \
+                                    </fetch>`;
+
                     let pageTitle = this.pageTitle;
-                    console.log(`${pageTitle} -  getTickets started...`);
+                    let selectOptions = this.selectOptions;
+                    let hideLoadingPage = this.hideLoadingPage;
+                    
+                    return Xrm.WebApi.retrieveMultipleRecords("im360_zendesktickets", "?fetchXml=" + fetchXml).then(
+                        function success(result) {
+                            let selected = '';
+                            let items = [];
 
-                    let response;
-                    try {
-                        // TODO: change the limit value from the front end value user chose
-                        let fullUrl = `${zendeskBaseUrl}/searchByResellerId?limit=${limit}&code=${funcCodeForTickets}&resellerId=${zendesk_bcn}`;
-                        console.log(fullUrl);
-                        response = await axios.get(fullUrl);
-                    } catch (err) {
-                        console.error(`${pageTitle} - Zendesk API error`);
-                        console.log(err);
-                        this.hideLoadingPage();
-                    }
-                    if (response && response.data) {
-                        let itemsWithoutCountryFilter = response.data.results;
-                        await asyncForEach(itemsWithoutCountryFilter, async ticket => {
-                            let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                            const objCountry = ticket.custom_fields && ticket.custom_fields.find(item => item.id === countryFieldId);
-                            const countryValue = objCountry ? objCountry.value : '';
-                            let strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
-                            if (strCountry && zendesk_country && (strCountry.toLowerCase().trim() == zendesk_country.toLowerCase().trim())) {
-                                items.push(ticket);
-                            }
-                        });
-                        //items = response.data.results;
-                        this.items = items;
-                        if (items && items.length > 0) {
-                            if (!selected) {
-                                if (selectedTicketId) {
-                                    items.forEach(item => {
-                                        if(item['id'] && (item['id'].toString() == selectedTicketId)) {
-                                            selected = `${item['id']}.${item['subject']}`;
-                                        }
-                                    });
-
-                                    if (!selected) {
-                                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, selectedTicketId);
-                                        items.push(this.record);
-                                        selected = `${this.record['id']}.${this.record['subject']}`;
+                            if (result != null) {
+                                items = result.entities;
+                                if (items && items.length > 0) {
+                                    selected = `${items[0]['im360_ticketid']}.${items[0]['im360_ticketsubjectline']}`;
+                                    if (selectedTicketId) {
+                                        items.forEach(item => {
+                                            if(item['im360_ticketid'] && (item['im360_ticketid'].toString() == selectedTicketId)) {
+                                                selected = `${item['im360_ticketid']}.${item['im360_ticketsubjectline']}`;
+                                            }
+                                        });
                                     }
-                                } else {
-                                    selected = `${items[0]['id']}.${items[0]['subject']}`;
+
+                                    selectOptions = [];
+                                    items.forEach(item => {
+                                        selectOptions.push(`${item.im360_ticketid}.${item.im360_ticketsubjectline}`);
+                                    });
+                                    if (selectOptions.length > 0) {
+                                        let newOption = 'View more tickets...';
+                                        selectOptions.push(newOption);
+                                    }
                                 }
-
-                                this.selectOptions.length = 0;
-                                items.forEach(item => {
-                                    this.selectOptions.push(`${item.id}.${item.subject}`);
-                                });
-                                if (this.selectOptions.length > 0) {
-                                    let newOption = 'View more tickets...';
-                                    this.selectOptions.push(newOption);
-                                }
+                            } else {
+                                console.error(`${pageTitle} - Cannot get Zendesk tickets.`);
+                                return null;
                             }
-                            this.selectedIdAndSubject = selected;
-                            let ticketId = getTicketId(this.selectedIdAndSubject);
-                            console.log(`${pageTitle} - ticketId in getTickets(): ${ticketId}`);
-                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId);
-                            if (this.record) {
-                                let subjectGet = this.record['subject'];
-                                this.selectedIdAndSubject = `${ticketId}.${subjectGet}`;
-                                console.log(`${pageTitle} - subjectGet: ${subjectGet}`);
 
-                                // let jsonId = 'metrics';
-                                // let jsonPath = `tickets/${ticketId}`;
-                                // let metricsData = ticketId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                                // if (metricsData) {
-                                //     this.record.ticket_metric = metricsData.ticket_metric;
-                                // }
-                                //this.record.tags = this.record.tags ? this.record.tags.join(", ") : '';
+                            let finalResult = {
+                                selected,
+                                selectOptions,
+                                items
                             }
-                        } else {
-                            record = null;
+                            hideLoadingPage();
+                            return finalResult;
+                        },
+                        function (error) {
+                            console.error(`${pageTitle} - ${error.message}`);
+                            this.hideLoadingPage();
+                            return null;
                         }
-                        if (record) {
-                            this.ticketSummary = this.getTicketSummary(items);
-                            if (this.ticketSummary.length > 0) {
-                                this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
-                            }
-                        }
-                    } else {
-                        console.error(`${pageTitle} - Get Zendesk all tickets error`);
-                        this.hideLoadingPage();
-                    }
-                    if (!record && this.selectOptions.length === 0) {
-                        this.notFoundMessage = `No ticket found for ${zendesk_bcn}`;
-                    }
-
-                    this.hideLoadingPage();
+                    );
                 },
 
                 async setSelected() {
@@ -524,8 +524,8 @@
                         this.hideLoadingPage();
 
                         if (this.record) {
-                            let id = this.record['id'];
-                            let subjectGet = this.record['subject'];
+                            let id = this.record['im360_ticketid'];
+                            let subjectGet = this.record['im360_ticketsubjectline'];
                             this.selectedIdAndSubject = `${id}.${subjectGet}`;
                         }
 
@@ -653,14 +653,12 @@
                     const result = [];
                     try {
                         items.forEach(item => {
-                            const createdAt = new Date(item.created_at);
+                            const createdAt = new Date(item.im360_created_at);
                             const strMonth = (createdAt.getMonth() + 1).toString();
                             const fullMonth = strMonth.length === 1 ? `0${strMonth}` : `${strMonth}`;
                             const yearAndMonth = `${createdAt.getFullYear()}-${fullMonth}`;
-                            const groupId = item.group_id;
                             const ticketObj = {
                                 yearAndMonth,
-                                groupId
                             }
                             result.push(ticketObj);
                         });
