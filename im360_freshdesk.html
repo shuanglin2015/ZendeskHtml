@@ -106,7 +106,7 @@
                     
                     <div v-if="record.requesterEmail">
                         <strong class="MessageHeaderWithoutLeftMargin">{{record.created_at.substring(0, 10)}}
-                        {{record.created_at.substring(11,19)}} {{record.requesterEmail}}</strong>
+                        {{record.created_at.substring(11,19)}} From: {{record.requesterEmail}}</strong>
                     </div>
                     
                     <div class="scrollableDiv">
@@ -131,23 +131,18 @@
                 <div v-if="record.conversations && record.conversations[0]">
                     <ul>
                         <li v-for="item in record.conversations" :key="item.id">
-                            <div v-if="item.id != record.conversations[record.conversations.length-1].id">
+                            <div class="MainMessageConversation" v-if="item.id != record.conversations[record.conversations.length-1].id">
                                 <strong class="MessageHeader">{{item.created_at && item.created_at.length > 10 ? item.created_at.substring(0, 10) : ''}} {{item.created_at && item.created_at.length > 19 ? item.created_at.substring(11, 19) : ''}} -
-                                    {{item.author_email || record.requesterEmail}}</strong>
-                                <!-- <div class="MessageHeader">
-                                    
-                                </div> -->
-                                <br>
+                                    From: {{item.author_email || record.requesterEmail}}</strong>
                                 <div style="margin-left: 20px;" v-html="item.html_body"></div>
-                                <br>
                                 <div style="margin-left: 20px;" v-if="item.attachments && item.attachments[0]">
-                                        <strong>Attachments:</strong>
-                                        <ul>
-                                            <li v-for="attach in item.attachments" :key="attach.file_name">
-                                                <a :href="attach.content_url" target="_blank">{{attach.file_name}}</a>
-                                            </li>
-                                        </ul>
-                                    </div>
+                                    <strong>Attachments:</strong>
+                                    <ul>
+                                        <li v-for="attach in item.attachments" :key="attach.file_name">
+                                            <a :href="attach.content_url" target="_blank">{{attach.file_name}}</a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </li>
                     </ul>
@@ -761,6 +756,19 @@
             margin-left: 20px;
             margin-right: 20px;
             margin-top: 50px;
+        }
+
+        .MainMessageConversation {
+            overflow: auto;
+            text-align: left;
+            background-color: #93dde3;
+            padding: 1%;
+            font-size: 14px;
+            border-radius: 25px;
+            border: solid 1.5px black;
+            margin-left: 20px;
+            margin-right: 20px;
+            margin-top: 20px;
         }
 
         .MessageHeader {
