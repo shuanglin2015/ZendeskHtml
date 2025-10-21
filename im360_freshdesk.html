@@ -131,7 +131,7 @@
                 <div v-if="record.conversations && record.conversations[0]">
                     <ul>
                         <li v-for="item in record.conversations" :key="item.id">
-                            <div class="MainMessageConversation" v-if="item.id != record.conversations[record.conversations.length-1].id">
+                            <div :style="{ backgroundColor: item.dynamicColor }" class="MainMessageConversation" v-if="item.id != record.conversations[record.conversations.length-1].id">
                                 <strong class="MessageHeader">{{item.created_at && item.created_at.length > 10 ? item.created_at.substring(0, 10) : ''}} {{item.created_at && item.created_at.length > 19 ? item.created_at.substring(11, 19) : ''}} -
                                     From: {{item.author_email || record.requesterEmail}}</strong>
                                 <div style="margin-left: 20px;" v-html="item.html_body"></div>
@@ -596,6 +596,18 @@
                                 jsonId = result.author_id;
                                 let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
                                 result.author_email = userData.user ? userData.user.email : '';
+                                item.author_email = userData.user ? userData.user.email : '';
+                                item.role = userData.user ? userData.user.role : '';
+                                if (item.public == false) {
+                                    item.dynamicColor = "#fff3e4";
+                                } else {
+                                    if (item.role == "agent") {
+                                        item.dynamicColor = "#f8f9f9";
+                                    }
+                                    if (item.role == "end-user") {
+                                        item.dynamicColor = "#ecf9f9";
+                                    }
+                                }
                             }
                         }
                         
@@ -761,7 +773,6 @@
         .MainMessageConversation {
             overflow: auto;
             text-align: left;
-            background-color: #93dde3;
             padding: 1%;
             font-size: 14px;
             border-radius: 25px;
