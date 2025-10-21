@@ -233,7 +233,7 @@
                 }
                 console.log(`${this.pageTitle} - zendesk_country value in mounted(): ${zendesk_country}`);
                 console.log(`${this.pageTitle} - zendesk_bcn value in mounted(): ${zendesk_bcn}`);
-                this.showLoadingPage();
+                this.showLoadingPage && this.showLoadingPage();
                 this.startTime = Date.now();
 
                 let funcCodeString = '';
@@ -245,7 +245,7 @@
                     console.log(`${this.pageTitle} - appId from FreshdeskAPI configuration: ${this.appId}`);
                 } else {
                     console.error(`${this.pageTitle} - zendeskConfig is null`);
-                    this.hideLoadingPage();
+                    this.hideLoadingPage && this.hideLoadingPage();
                 }
                 console.log(`${this.pageTitle} - try to start getTickets function`);
 
@@ -269,7 +269,6 @@
                 this.funcCodeForJsonById = funcCodeForJsonById;
 
                 // await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2 seconds to ensure zendesk_ticketIdParam variables are set
-
                 console.log(`${this.pageTitle} - zendesk_ticketIdParam: ${zendesk_ticketIdParam}`);
 
                 let selectedTicketId = localStorage.getItem('zendesk_ticketId');
@@ -280,21 +279,42 @@
                     selectedTicketId = zendesk_ticketIdParam;
                 }
 
-                // if (selectedTicketId) {
-                //     this.record = await this.getTicket(zendeskBaseUrl, funcCode, zendesk_ticketIdParam);
-                //     items.push(this.record);
-                //     this.items = items;
-                //     this.hideLoadingPage();
-                // } else {
-                    if (this.zendeskBaseUrl && zendesk_country && zendesk_bcn) {
-                        let tickets = await  this.getTickets(selectedTicketId);
+                if (this.zendeskBaseUrl && zendesk_country && zendesk_bcn) {
+                    let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
+                    if (tickets) {
+                        const {selected, selectOptions, items} = tickets;
+                        this.selected = selected;
+                        this.selectOptions = selectOptions;
+                        this.items = items;
+                        let ticketId = getTicketId(selected);
+                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
+                        let id = this.record['id'];
+                        let subjectGet = this.record['subject'];
+                        this.selectedIdAndSubject = `${id}.${subjectGet}`;
+                        if (items && items.length > 0) {
+                            this.ticketSummary = this.getTicketSummary(items);
+                            if (this.ticketSummary.length > 0) {
+                                this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
+                            }
+                        }
+                    }
+                } else {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
+                    console.log(`${this.pageTitle} - try again - zendesk_bcn: ${zendesk_bcn}`);
+                    let message = 'try to start getTickets function for the second time';
+                    console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
+                    if (zendesk_country && zendesk_bcn) {
+                        this.notFoundMessage = '';
+                        let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                         if (tickets) {
                             const {selected, selectOptions, items} = tickets;
                             this.selected = selected;
                             this.selectOptions = selectOptions;
                             this.items = items;
                             let ticketId = getTicketId(selected);
-                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId);
+                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
                             let id = this.record['id'];
                             let subjectGet = this.record['subject'];
                             this.selectedIdAndSubject = `${id}.${subjectGet}`;
@@ -306,38 +326,10 @@
                             }
                         }
                     } else {
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-
-                        console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
-                        console.log(`${this.pageTitle} - try again - zendesk_bcn: ${zendesk_bcn}`);
-                        let message = 'try to start getTickets function for the second time';
-                        console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
-                        if (zendesk_country && zendesk_bcn) {
-                            this.notFoundMessage = '';
-                            let tickets = await  this.getTickets(selectedTicketId);
-                            if (tickets) {
-                                const {selected, selectOptions, items} = tickets;
-                                this.selected = selected;
-                                this.selectOptions = selectOptions;
-                                this.items = items;
-                                let ticketId = getTicketId(selected);
-                                this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId);
-                                let id = this.record['id'];
-                                let subjectGet = this.record['subject'];
-                                this.selectedIdAndSubject = `${id}.${subjectGet}`;
-                                if (items && items.length > 0) {
-                                    this.ticketSummary = this.getTicketSummary(items);
-                                    if (this.ticketSummary.length > 0) {
-                                        this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
-                                    }
-                                }
-                            }
-                        } else {
-                            this.notFoundMessage = "Account Country and BCN are required to find related tickets.";
-                            this.hideLoadingPage();
-                        }
+                        this.notFoundMessage = "Account Country and BCN are required to find related tickets.";
+                        this.hideLoadingPage && this.hideLoadingPage();
                     }
-                // }
+                }
 
             },
             methods: {
@@ -368,7 +360,7 @@
                         },
                         function (error) {
                             console.error(`${pageTitle} - ${error.message}`);
-                            this.hideLoadingPage();
+                            this.hideLoadingPage && this.hideLoadingPage();
                             return null;
                         }
                     );
@@ -401,7 +393,7 @@
                             },
                             function (error) {
                                 console.error(`${pageTitle} - ${error.message}`);
-                                this.hideLoadingPage();
+                                this.hideLoadingPage && this.hideLoadingPage();
                                 return null;
                             }
                         );
@@ -427,7 +419,7 @@
                     return valueid;
                 },
 
-                async getTickets(selectedTicketId) {
+                async getTickets(selectedTicketId, showLoadingPage, hideLoadingPage) {
                     let results = [];
 
                     let fetchXml = `<fetch top='5000'> \
@@ -456,7 +448,8 @@
 
                     let pageTitle = this.pageTitle;
                     let selectOptions = this.selectOptions;
-                    let hideLoadingPage = this.hideLoadingPage;
+                    showLoadingPage && showLoadingPage();
+                    this.showLoadingPage && this.showLoadingPage();
                     
                     return Xrm.WebApi.retrieveMultipleRecords("im360_zendesktickets", "?fetchXml=" + fetchXml).then(
                         function success(result) {
@@ -494,12 +487,14 @@
                                 selectOptions,
                                 items
                             }
-                            hideLoadingPage();
+                            hideLoadingPage && hideLoadingPage();
+                            this.hideLoadingPage && this.hideLoadingPage();
                             return finalResult;
                         },
                         function (error) {
                             console.error(`${pageTitle} - ${error.message}`);
-                            this.hideLoadingPage();
+                            hideLoadingPage && hideLoadingPage();
+                            this.hideLoadingPage && this.hideLoadingPage();
                             return null;
                         }
                     );
@@ -507,7 +502,7 @@
 
                 async setSelected() {
                     if (this.selectedIdAndSubject === 'View more tickets...') {
-                        this.showLoadingPage();
+                        this.showLoadingPage && this.showLoadingPage();
                         // refresh:
                         // this.getTickets(this.zendeskBaseUrl, this.funcCode, this.funcCodeForTickets, '', 100, this.hideLoadingPage);
                         let url = window.location.protocol + "//" + window.location.host + "/";
@@ -515,7 +510,7 @@
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
                         // localStorage.setItem('zendesk_country_name', zendesk_country);
                         // localStorage.setItem('zendesk_bcn', zendesk_bcn);
-                        this.hideLoadingPage();
+                        this.hideLoadingPage && this.hideLoadingPage();
 
                         if (this.record) {
                             let id = this.record['im360_ticketid'];
@@ -526,8 +521,10 @@
                         window.open(fullUrl, '_blank');
                         return;
                     } else {
+                        this.showLoadingPage && this.showLoadingPage();
                         const ticketId = getTicketId(this.selectedIdAndSubject);
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId);
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
+                        this.hideLoadingPage && this.hideLoadingPage();
                     }
                 },
 
@@ -566,7 +563,9 @@
                     return result;
                 },
 
-                async getTicket(zendeskBaseUrl, funcCode, ticketId) {
+                async getTicket(zendeskBaseUrl, funcCode, ticketId, showLoadingPage, hideLoadingPage) {
+                    showLoadingPage && showLoadingPage();
+                    this.showLoadingPage && this.showLoadingPage();
                     const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}`;
                     console.log(fullUrl);
                     const response = await axios.get(fullUrl);
@@ -635,7 +634,8 @@
                         const objCountry = result.custom_fields && result.custom_fields.find(item => item.id === countryFieldId);
                         const countryValue = objCountry ? objCountry.value : '';
                         result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
-
+                        hideLoadingPage && hideLoadingPage();
+                        this.hideLoadingPage && this.hideLoadingPage();
                     }
                     
                     return result;
@@ -670,7 +670,7 @@
                         });
                     } catch (err) {
                         console.error(`${this.pageTitle} - Zendesk getTicketSummary error`);
-                        this.hideLoadingPage();
+                        this.hideLoadingPage && this.hideLoadingPage();
                     }
                     return result;
                 },
@@ -690,7 +690,7 @@
                         });
                     } catch (err) {
                         console.error(`${this.pageTitle} - getGroupByMonthTickets error`);
-                        this.hideLoadingPage();
+                        this.hideLoadingPage && this.hideLoadingPage();
                     }
                     return result;
                 }
