@@ -598,7 +598,7 @@
                         result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
                         if (result.conversations) {
                             for (let item of result.conversations) {
-                                jsonId = result.author_id;
+                                jsonId = item.author_id;
                                 let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
                                 result.author_email = userData.user ? userData.user.email : '';
                                 item.author_email = userData.user ? userData.user.email : '';
