@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.min.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script src="https://unpkg.com/jquery@3.1.1/dist/jquery.js"></script>
-
     <script src="https://unpkg.com/vue-select@3.0.0"></script>
     <link rel="stylesheet" href="https://unpkg.com/vue-select@3.0.0/dist/vue-select.css">
 
@@ -26,14 +25,14 @@
 
         <div>
             <div class="select-box">
-                <v-select v-model="selectedIdAndSubject" @input="setSelected" placeholder="Select ticket"
+                <v-select ref="mySelect" v-model="selectedIdAndSubject" @input="setSelected" placeholder="Select ticket" @new="addOption"
                           :options="selectOptions" />
             </div>
 
-            <div class="expand-button">
+            <!-- <div class="expand-button">
                 <img src="im360_refresh.png" v-on:click="retrieveTicket" class="expand-image" title="Retrieve ticket" />
                 <input type="text" style="width: 80px;" v-model="inputTicketId" placeholder="Ticket Id" />
-            </div>
+            </div> -->
 
             <div v-if="notFoundMessage" class="not-found">
                 {{notFoundMessage}}
@@ -218,7 +217,7 @@
                 funcCodeForTickets: '',
                 funcCodeForJsonById: '',
                 selectedIdAndSubject: '',
-                selectOptions: [],
+                selectOptions: ['View more tickets...'],
                 record: null,
                 items: null,
                 showLoading: true,
@@ -230,6 +229,17 @@
                 inputTicketId: '',
             },
             async mounted() {
+                // Wait for vue-select to render, then attach key listener
+                this.$nextTick(() => {
+                    const inputEl = this.$refs.mySelect.$el.querySelector('input');
+                    if (inputEl) {
+                        inputEl.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') {
+                                this.handleEnter(e);
+                            }
+                        });
+                    }
+                });
                 if (!zendesk_country || !zendesk_bcn){
                     let account = await this.getAccountCountryAndBCN();
                     if (account) {
@@ -480,7 +490,9 @@
                                     });
                                     if (selectOptions.length > 0) {
                                         let newOption = 'View more tickets...';
-                                        selectOptions.push(newOption);
+                                        if (!selectOptions.includes(newOption)) {
+                                            selectOptions.push(newOption);
+                                        }
                                     }
                                 }
                             } else {
@@ -534,6 +546,40 @@
                     }
                 },
 
+                addOption(newOption) {
+                    // if (!this.selectOptions.includes(newOption)) {
+                    //     this.selectOptions.push(newOption);
+                    // }
+                    // this.selectedIdAndSubject = newOption;
+                },
+
+                async handleEnter(event) {
+                    const inputValue = event.target.value.trim();
+                    if (inputValue) {
+                        if (!isNaN(inputValue)) {
+                            // retrieveTicket();
+                            let ticketId = inputValue;
+                            if (!this.selectOptions.includes(ticketId)) {
+                                this.selectOptions.unshift(ticketId);  // add ticketId as the first item of the array
+                            }
+                            this.showLoadingPage && this.showLoadingPage();
+                            this.selectedIdAndSubject = ticketId;
+                            this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
+                            this.hideLoadingPage && this.hideLoadingPage();
+                        } else {
+                            this.hideLoadingPage && this.hideLoadingPage();
+                            let ticketId = getTicketId(inputValue);
+                            if (isNaN(ticketId)) {
+                                Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type a number as Ticket Id to search." })
+                            }
+                        }
+                    } else {
+                        this.hideLoadingPage && this.hideLoadingPage();
+                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type Ticket Id to search." })
+                    }
+                    this.hideLoadingPage && this.hideLoadingPage();
+                },
+
                 async getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) {
                     let result = 'N/A';
                     if (jsonId && jsonId !== 'null') {
@@ -548,7 +594,6 @@
                     let result = 'N/A';
                     if (ticketId && ticketId !== 'null') {
                         const response = await axios.get(`${zendeskBaseUrl}/getCommentById?code=${funcCodeForComments}&itemId=${ticketId}`);
-
                         result = response.data ? response.data.comments : '';
                     }
 
@@ -574,77 +619,80 @@
                     this.showLoadingPage && this.showLoadingPage();
                     const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}`;
                     console.log(fullUrl);
-                    const response = await axios.get(fullUrl);
+                    if (ticketId && ticketId !== 'null') {
+                        const response = await axios.get(fullUrl);
+                        let result = response.data;
+                        if (result) {
+                            // result = convertValue(result);
 
-                    let result = response.data;
-                    if (result) {
-                        // result = convertValue(result);
+                            if (result && result.ticket) {
+                                result = {
+                                ...result,
+                                ...result.ticket
+                                };
+                                delete result.ticket;
+                            }
+                            let jsonPath = 'users';
+                            let jsonId = result.requester_id;
+                            let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                            result.requesterEmail = userData.user ? userData.user.email : '';
 
-                        if (result && result.ticket) {
-                            result = {
-                            ...result,
-                            ...result.ticket
-                            };
-                            delete result.ticket;
-                        }
-                        let jsonPath = 'users';
-                        let jsonId = result.requester_id;
-                        let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                        result.requesterEmail = userData.user ? userData.user.email : '';
-
-                        let jsonIdForAssignee = result.assignee_id;
-                        let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
-                        result.strAgent = agentData.user ? agentData.user.name : '-';
-                        result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
-                        if (result.conversations) {
-                            for (let item of result.conversations) {
-                                jsonId = item.author_id;
-                                let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                                result.author_email = userData.user ? userData.user.email : '';
-                                item.author_email = userData.user ? userData.user.email : '';
-                                item.role = userData.user ? userData.user.role : '';
-                                if (item.public == false) {
-                                    item.dynamicColor = "#fff3e4";
-                                } else {
-                                    if (item.role == "agent") {
-                                        item.dynamicColor = "#f8f9f9";
-                                    }
-                                    if (item.role == "end-user") {
-                                        item.dynamicColor = "#ecf9f9";
+                            let jsonIdForAssignee = result.assignee_id;
+                            let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
+                            result.strAgent = agentData.user ? agentData.user.name : '-';
+                            result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
+                            if (result.conversations) {
+                                for (let item of result.conversations) {
+                                    jsonId = item.author_id;
+                                    let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                    result.author_email = userData.user ? userData.user.email : '';
+                                    item.author_email = userData.user ? userData.user.email : '';
+                                    item.role = userData.user ? userData.user.role : '';
+                                    if (item.public == false) {
+                                        item.dynamicColor = "#fff3e4";
+                                    } else {
+                                        if (item.role == "agent") {
+                                            item.dynamicColor = "#f8f9f9";
+                                        }
+                                        if (item.role == "end-user") {
+                                            item.dynamicColor = "#ecf9f9";
+                                        }
                                     }
                                 }
                             }
+                            
+                            let domainFieldId = isStage ? 31042462931476 : 34698829065236;
+                            const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
+                            const domainValue = objDomain ? objDomain.value : '';
+                            result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '';
+                            
+                            let supportTierFieldId = isStage ? 33937714050708 : 34698770438676;
+                            const objTier = result.custom_fields && result.custom_fields.find(item => item.id === supportTierFieldId);
+                            const tierValue = objTier ? objTier.value : '';
+                            result.strSupportTier = tierValue ? await this.getCustomFieldValue(supportTierFieldId, tierValue) : '';
+
+                            let platformFieldId = isStage ? 35415435690388 : 35228789545364;
+                            const objPlatform = result.custom_fields && result.custom_fields.find(item => item.id === platformFieldId);
+                            const platformValue = objPlatform ? objPlatform.value : '';
+                            result.strPlatform = platformValue ? await this.getCustomFieldValue(platformFieldId, platformValue) : '';
+
+                            let vendorFieldId = isStage ? 36211322445460 : 35229050467860;
+                            const objVendor = result.custom_fields && result.custom_fields.find(item => item.id === vendorFieldId);
+                            const vendorValue = objVendor ? objVendor.value : '';
+                            result.strVendor = vendorValue ? await this.getCustomFieldValue(vendorFieldId, vendorValue) : '';
+
+                            let countryFieldId = isStage ? 31959436739604 : 35138178531732;
+                            const objCountry = result.custom_fields && result.custom_fields.find(item => item.id === countryFieldId);
+                            const countryValue = objCountry ? objCountry.value : '';
+                            result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
+                            hideLoadingPage && hideLoadingPage();
+                            this.hideLoadingPage && this.hideLoadingPage();
                         }
                         
-                        let domainFieldId = isStage ? 31042462931476 : 34698829065236;
-                        const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
-                        const domainValue = objDomain ? objDomain.value : '';
-                        result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '';
-                        
-                        let supportTierFieldId = isStage ? 33937714050708 : 34698770438676;
-                        const objTier = result.custom_fields && result.custom_fields.find(item => item.id === supportTierFieldId);
-                        const tierValue = objTier ? objTier.value : '';
-                        result.strSupportTier = tierValue ? await this.getCustomFieldValue(supportTierFieldId, tierValue) : '';
-
-                        let platformFieldId = isStage ? 35415435690388 : 35228789545364;
-                        const objPlatform = result.custom_fields && result.custom_fields.find(item => item.id === platformFieldId);
-                        const platformValue = objPlatform ? objPlatform.value : '';
-                        result.strPlatform = platformValue ? await this.getCustomFieldValue(platformFieldId, platformValue) : '';
-
-                        let vendorFieldId = isStage ? 36211322445460 : 35229050467860;
-                        const objVendor = result.custom_fields && result.custom_fields.find(item => item.id === vendorFieldId);
-                        const vendorValue = objVendor ? objVendor.value : '';
-                        result.strVendor = vendorValue ? await this.getCustomFieldValue(vendorFieldId, vendorValue) : '';
-
-                        let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                        const objCountry = result.custom_fields && result.custom_fields.find(item => item.id === countryFieldId);
-                        const countryValue = objCountry ? objCountry.value : '';
-                        result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
-                        hideLoadingPage && hideLoadingPage();
-                        this.hideLoadingPage && this.hideLoadingPage();
+                        return result;
+                    } else {
+                        return null;
                     }
-                    
-                    return result;
                 },
 
                 showLoadingPage() {
@@ -721,7 +769,7 @@
         }
 
         const getTicketId = (selectedIdAndSubject) => {
-            const ticketId = selectedIdAndSubject ? selectedIdAndSubject.substring(0, selectedIdAndSubject.indexOf('.')) : '';
+            const ticketId = (selectedIdAndSubject && selectedIdAndSubject.indexOf('.') > 0) ? selectedIdAndSubject.substring(0, selectedIdAndSubject.indexOf('.')) : selectedIdAndSubject;
             return ticketId;
         }
 
