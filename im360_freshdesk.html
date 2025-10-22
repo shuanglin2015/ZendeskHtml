@@ -256,11 +256,11 @@
                 console.log(`${this.pageTitle} - try to start getTickets function`);
 
                 let zendeskBaseUrl = this.zendeskBaseUrl;
-                let stageApi = 'crm-zendesk-api.azurewebsites.net';
-                if (zendeskBaseUrl && zendeskBaseUrl.indexOf(stageApi) > -1) {
-                    isStage = true;
-                } else {
+                let apiProd = 'crm-zendesk-api-prod';
+                if (zendeskBaseUrl && zendeskBaseUrl.indexOf(apiProd) > -1) {
                     isStage = false;
+                } else {
+                    isStage = true;
                 }
                 let funcCodeArr = funcCodeString.toString().split(';;;;');
                 let funcCodeForTickets = funcCodeArr.length > 2 && funcCodeArr[2];
