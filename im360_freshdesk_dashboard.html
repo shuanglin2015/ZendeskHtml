@@ -125,6 +125,44 @@
                         );
                     },
 
+                    async getAccountIdByCountryAndBCN(country, bcn) {
+                        if (country && bcn) {
+                            let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                                <entity name='account'> \
+                                    <attribute name='accountid' /> \
+                                    <link-entity name='im360_country' from='im360_countryid' to='im360_country' link-type='inner'> \
+                                        <attribute name='im360_name' alias='CountryName' /> \
+                                        <filter type='and'> \
+                                            <condition attribute='im360_name' operator='eq' value='" + country + "' /> \
+                                        </filter> \
+                                    </link-entity> \
+                                    <filter type='and'> \
+                                        <condition attribute='im360_bcn' operator='eq' value='" + bcn + "' /> \
+                                    </filter> \
+                                </entity> \
+                                </fetch>";
+
+                            let pageTitle = this.pageTitle;
+                            return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
+                                function success(result) {
+                                    if (result != null) {
+                                        return result.entities[0];
+                                    } else {
+                                        console.error(`${pageTitle} - Cannot get Account by Country and BCN.`);
+                                        return null;
+                                    }
+                                },
+                                function (error) {
+                                    console.error(`${pageTitle} - ${error.message}`);
+                                    this.hideLoadingPage && this.hideLoadingPage();
+                                    return null;
+                                }
+                            );
+                        } else{
+                            return null;
+                        }
+                    },
+
                     async getTickets() {
                         let results = [];
 
@@ -192,6 +230,7 @@
                         let pageTitle = this.pageTitle;
                         let appId = this.appId;
                         let formId = this.formId;
+                        let getAccountIdByCountryAndBCN = this.getAccountIdByCountryAndBCN;
 
                         $("#gridContainer").dxDataGrid({
                             dataSource: ticketsArr,
@@ -220,23 +259,43 @@
                             showRowLines: true,
                             showScrollbar: true,
                             useNative: false,
-                            onRowClick: function (e) {
+                            onRowClick: async function (e) {
                                 let data = e.data; // selectedItems.selectedRowsData[0];
                                 console.log(`${pageTitle} - onRowClick -> data: ${JSON.stringify(data)}`);
-                                /*let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';*/
-                                let accountId = data.AccountId;
-                                if (accountId && accountId != '-') {
+                                
+                                let country = data['Country'];
+                                let bcn = data['Ingram BCN#'];
+                                // if (country && accountId != '-') {
+                                if (country && country != '-' && bcn && bcn != '-') {
+                                    let accountData = await getAccountIdByCountryAndBCN(country, bcn);
+                                    /*let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';*/
+                                    let accountId = accountData ? accountData.accountid : '-';
+                                    console.log(`${pageTitle} - onRowClick -> accountId: ${accountId}`);
+
                                     let ticketId = data.TicketId;
                                     let url = window.location.protocol + "//" + window.location.host + "/";
                                     let fieldName = 'im360_newnavigationtab';
                                     let tabName = 'tab_freshdesk';    
                                     let selectedResellerId = data['Ingram BCN#'];
-                                    let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
-                                    console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
-                                    localStorage.setItem('zendesk_ticketId', ticketId);
-                                    window.open(fullUrl, '_blank');
+
+                                    if (accountId && accountId != '-') {
+                                        let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
+                                        console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
+                                        localStorage.setItem('zendesk_ticketId', ticketId);
+                                        window.open(fullUrl, '_blank');
+                                    } else {
+                                        let accountId = data.AccountId;
+                                        if (accountId && accountId != '-') {
+                                            let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
+                                            console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
+                                            localStorage.setItem('zendesk_ticketId', ticketId);
+                                            window.open(fullUrl, '_blank');
+                                        } else {
+                                            Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Cannot get Account Id by Country and BCN. Unable to load account details." })
+                                        }
+                                    }
                                 } else {
-                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Account Id is not available. Unable to load account details." })
+                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Country or BCN is not available. Unable to load account details." })
                                 }
                                 return null;
                             }
