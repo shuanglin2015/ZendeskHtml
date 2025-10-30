@@ -168,7 +168,6 @@
 
                         let fetchXml = "<fetch top='5000'> \
                                             <entity name='im360_zendesktickets'> \
-                                                <attribute name='im360_accountid' /> \
                                                 <attribute name='im360_country' /> \
                                                 <attribute name='im360_created_at' /> \
                                                 <attribute name='im360_domain' /> \
@@ -182,6 +181,12 @@
                                                 <attribute name='im360_ticketid' /> \
                                                 <attribute name='im360_ticketsubjectline' /> \
                                                 <attribute name='im360_updated_at' /> \
+                                                <link-entity name='im360_country' from='im360_name' to='im360_country' alias='country'> \
+                                                <attribute name='im360_name' /> \
+                                                <filter type='and'> \
+                                                    <condition attribute='statecode' operator='eq' value='0' /> \
+                                                </filter> \
+                                                </link-entity> \
                                                 <order descending='true' attribute='im360_created_at' /> \
                                             </entity> \
                                         </fetch>";
@@ -203,8 +208,7 @@
                                                     'Ticket subject line': item.im360_ticketsubjectline ? item.im360_ticketsubjectline : '-',
                                                     'Status': item.im360_status ? item.im360_status : '-',
                                                     'Domain': item.im360_domain ? item.im360_domain : '-',
-                                                    'Priority': item.im360_priority ? item.im360_priority : '-',
-                                                    'AccountId': item.im360_accountid ? item.im360_accountid : '-'
+                                                    'Priority': item.im360_priority ? item.im360_priority : '-'
                                                 };
 
                                                 console.log(`${pageTitle} - item after adding more fields: ${JSON.stringify(itemNew)}`);
@@ -284,15 +288,7 @@
                                         localStorage.setItem('zendesk_ticketId', ticketId);
                                         window.open(fullUrl, '_blank');
                                     } else {
-                                        let accountId = data.AccountId;
-                                        if (accountId && accountId != '-') {
-                                            let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
-                                            console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
-                                            localStorage.setItem('zendesk_ticketId', ticketId);
-                                            window.open(fullUrl, '_blank');
-                                        } else {
-                                            Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Cannot get Account Id by Country and BCN. Unable to load account details." })
-                                        }
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Cannot get Account Id by Country and BCN. Unable to load account details." })
                                     }
                                 } else {
                                     Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Country or BCN is not available. Unable to load account details." })
