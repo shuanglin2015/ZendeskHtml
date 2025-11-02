@@ -303,7 +303,7 @@
                         this.selectOptions = selectOptions;
                         this.items = items;
                         let ticketId = getTicketId(selected);
-                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
+                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
                         let id = this.record['id'];
                         let subjectGet = this.record['subject'];
                         this.selectedIdAndSubject = `${id}.${subjectGet}`;
@@ -330,7 +330,7 @@
                             this.selectOptions = selectOptions;
                             this.items = items;
                             let ticketId = getTicketId(selected);
-                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
+                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
                             let id = this.record['id'];
                             let subjectGet = this.record['subject'];
                             this.selectedIdAndSubject = `${id}.${subjectGet}`;
@@ -406,6 +406,47 @@
                                     console.error(`${pageTitle} - Cannot get Account BCN.`);
                                     return null;
                                 }
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage && this.hideLoadingPage();
+                                return null;
+                            }
+                        );
+                    } else{
+                        return null;
+                    }
+                },
+
+                async getZendeskConfigNameByValue(configValue) {
+                    let configName = '';
+                    if (!configValue) {
+                        return configName;
+                    }
+                    if (configValue) {
+                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                            <entity name='im360_zendeskconfig'> \
+                                <attribute name='im360_name' /> \
+                                <filter type='and'> \
+                                    <condition attribute='im360_value' operator='eq' value='" + configValue + "' /> \
+                                </filter> \
+                            </entity> \
+                            </fetch>";
+
+                        let pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null && result.entities && result.entities.length > 0) {
+                                    let zendeskConfig = result.entities[0];
+                                    if (zendeskConfig) {
+                                        configName = zendeskConfig.im360_name;
+                                    }
+
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get Zendesk Config Name by Value.`);
+                                    configName = null;
+                                }
+                                return configName;
                             },
                             function (error) {
                                 console.error(`${pageTitle} - ${error.message}`);
@@ -543,7 +584,7 @@
                     } else {
                         this.showLoadingPage && this.showLoadingPage();
                         const ticketId = getTicketId(this.selectedIdAndSubject);
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
                         this.hideLoadingPage && this.hideLoadingPage();
                     }
                 },
@@ -566,7 +607,7 @@
                             }
                             this.showLoadingPage && this.showLoadingPage();
                             this.selectedIdAndSubject = ticketId;
-                            this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
+                            this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
                             this.hideLoadingPage && this.hideLoadingPage();
                         } else {
                             this.hideLoadingPage && this.hideLoadingPage();
@@ -618,7 +659,7 @@
                     return result;
                 },
 
-                async getTicket(zendeskBaseUrl, funcCode, ticketId, showLoadingPage, hideLoadingPage) {
+                async getTicket(zendeskBaseUrl, funcCode, ticketId, showLoadingPage, hideLoadingPage, getZendeskConfigNameByValue) {
                     showLoadingPage && showLoadingPage();
                     this.showLoadingPage && this.showLoadingPage();
                     const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}`;
@@ -668,27 +709,38 @@
                             let domainFieldId = isStage ? 31042462931476 : 34698829065236;
                             const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
                             const domainValue = objDomain ? objDomain.value : '';
-                            result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '';
-                            
+                            result.strDomain = await getZendeskConfigNameByValue(domainValue);
+                            if (!result.strDomain) {
+                                 result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '';
+                            }
                             let supportTierFieldId = isStage ? 33937714050708 : 34698770438676;
                             const objTier = result.custom_fields && result.custom_fields.find(item => item.id === supportTierFieldId);
                             const tierValue = objTier ? objTier.value : '';
-                            result.strSupportTier = tierValue ? await this.getCustomFieldValue(supportTierFieldId, tierValue) : '';
-
+                            result.strSupportTier = await getZendeskConfigNameByValue(tierValue);
+                            if (!result.strSupportTier) {
+                                result.strSupportTier = tierValue ? await this.getCustomFieldValue(supportTierFieldId, tierValue) : '';
+                            }
                             let platformFieldId = isStage ? 35415435690388 : 35228789545364;
                             const objPlatform = result.custom_fields && result.custom_fields.find(item => item.id === platformFieldId);
                             const platformValue = objPlatform ? objPlatform.value : '';
-                            result.strPlatform = platformValue ? await this.getCustomFieldValue(platformFieldId, platformValue) : '';
-
+                            result.strPlatform = await getZendeskConfigNameByValue(platformValue);
+                            if (!result.strPlatform) {
+                                result.strPlatform = platformValue ? await this.getCustomFieldValue(platformFieldId, platformValue) : '';
+                            }
                             let vendorFieldId = isStage ? 36211322445460 : 35229050467860;
                             const objVendor = result.custom_fields && result.custom_fields.find(item => item.id === vendorFieldId);
                             const vendorValue = objVendor ? objVendor.value : '';
-                            result.strVendor = vendorValue ? await this.getCustomFieldValue(vendorFieldId, vendorValue) : '';
-
+                            result.strVendor = await getZendeskConfigNameByValue(vendorValue);
+                            if (!result.strVendor) {
+                                result.strVendor = vendorValue ? await this.getCustomFieldValue(vendorFieldId, vendorValue) : '';
+                            }
                             let countryFieldId = isStage ? 31959436739604 : 35138178531732;
                             const objCountry = result.custom_fields && result.custom_fields.find(item => item.id === countryFieldId);
                             const countryValue = objCountry ? objCountry.value : '';
-                            result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
+                            result.strCountry = await getZendeskConfigNameByValue(countryValue);
+                            if (!result.strCountry) {
+                                result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
+                            }
                             hideLoadingPage && hideLoadingPage();
                             this.hideLoadingPage && this.hideLoadingPage();
                         }
@@ -759,7 +811,7 @@
                     } else {
                         this.showLoadingPage && this.showLoadingPage();
                         this.selectedIdAndSubject = '';
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage);
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
                         this.hideLoadingPage && this.hideLoadingPage();
                     }
                 }
