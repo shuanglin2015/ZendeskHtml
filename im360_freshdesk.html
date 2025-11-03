@@ -303,7 +303,8 @@
                         this.selectOptions = selectOptions;
                         this.items = items;
                         let ticketId = getTicketId(selected);
-                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
+                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                            this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey,this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                         let id = this.record['id'];
                         let subjectGet = this.record['subject'];
                         this.selectedIdAndSubject = `${id}.${subjectGet}`;
@@ -330,7 +331,8 @@
                             this.selectOptions = selectOptions;
                             this.items = items;
                             let ticketId = getTicketId(selected);
-                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
+                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                                this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                             let id = this.record['id'];
                             let subjectGet = this.record['subject'];
                             this.selectedIdAndSubject = `${id}.${subjectGet}`;
@@ -418,6 +420,132 @@
                     }
                 },
 
+                async getZendeskConfigNameByKey(configKey) {
+                    let configName = '';
+                    if (!configKey) {
+                        return configName;
+                    }
+                    if (configKey) {
+                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                            <entity name='im360_zendeskconfig'> \
+                                <attribute name='im360_description' /> \
+                                <filter type='and'> \
+                                    <condition attribute='im360_key' operator='eq' value='" + configKey + "' /> \
+                                    <condition attribute='im360_category' operator='eq' value='users' /> \
+                                </filter> \
+                            </entity> \
+                            </fetch>";
+
+                        let pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null && result.entities && result.entities.length > 0) {
+                                    let zendeskConfig = result.entities[0];
+                                    if (zendeskConfig) {
+                                        configName = zendeskConfig.im360_description;
+                                    }
+
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get Zendesk Config User Name by Key.`);
+                                    configName = null;
+                                }
+                                return configName;
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage && this.hideLoadingPage();
+                                return null;
+                            }
+                        );
+                    } else{
+                        return null;
+                    }
+                },
+
+                async getZendeskConfigRoleByKey(configKey) {
+                    let configValue = '';
+                    if (!configKey) {
+                        return configValue;
+                    }
+                    if (configKey) {
+                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                            <entity name='im360_zendeskconfig'> \
+                                <attribute name='im360_value' /> \
+                                <filter type='and'> \
+                                    <condition attribute='im360_key' operator='eq' value='" + configKey + "' /> \
+                                    <condition attribute='im360_category' operator='eq' value='users' /> \
+                                </filter> \
+                            </entity> \
+                            </fetch>";
+
+                        let pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null && result.entities && result.entities.length > 0) {
+                                    let zendeskConfig = result.entities[0];
+                                    if (zendeskConfig) {
+                                        configValue = zendeskConfig.im360_value;
+                                    }
+
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get Zendesk Config User Role by Key.`);
+                                    configValue = null;
+                                }
+                                return configValue;
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage && this.hideLoadingPage();
+                                return null;
+                            }
+                        );
+                    } else{
+                        return null;
+                    }
+                },
+
+                async getZendeskConfigEmailByKey(configKey) {
+                    let configName = '';
+                    if (!configKey) {
+                        return configName;
+                    }
+                    if (configKey) {
+                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
+                            <entity name='im360_zendeskconfig'> \
+                                <attribute name='im360_name' /> \
+                                <filter type='and'> \
+                                    <condition attribute='im360_key' operator='eq' value='" + configKey + "' /> \
+                                    <condition attribute='im360_category' operator='eq' value='users' /> \
+                                </filter> \
+                            </entity> \
+                            </fetch>";
+
+                        let pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null && result.entities && result.entities.length > 0) {
+                                    let zendeskConfig = result.entities[0];
+                                    if (zendeskConfig) {
+                                        configName = zendeskConfig.im360_name;
+                                    }
+
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get Zendesk Config User Email by Key.`);
+                                    configName = null;
+                                }
+                                return configName;
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage && this.hideLoadingPage();
+                                return null;
+                            }
+                        );
+                    } else{
+                        return null;
+                    }
+                },
+
                 async getZendeskConfigNameByValue(configValue) {
                     let configName = '';
                     if (!configValue) {
@@ -429,6 +557,7 @@
                                 <attribute name='im360_name' /> \
                                 <filter type='and'> \
                                     <condition attribute='im360_value' operator='eq' value='" + configValue + "' /> \
+                                    <condition attribute='im360_category' operator='eq' value='ticket_fields' /> \
                                 </filter> \
                             </entity> \
                             </fetch>";
@@ -584,7 +713,8 @@
                     } else {
                         this.showLoadingPage && this.showLoadingPage();
                         const ticketId = getTicketId(this.selectedIdAndSubject);
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                            this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                         this.hideLoadingPage && this.hideLoadingPage();
                     }
                 },
@@ -607,7 +737,8 @@
                             }
                             this.showLoadingPage && this.showLoadingPage();
                             this.selectedIdAndSubject = ticketId;
-                            this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
+                            this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                                this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                             this.hideLoadingPage && this.hideLoadingPage();
                         } else {
                             this.hideLoadingPage && this.hideLoadingPage();
@@ -659,7 +790,8 @@
                     return result;
                 },
 
-                async getTicket(zendeskBaseUrl, funcCode, ticketId, showLoadingPage, hideLoadingPage, getZendeskConfigNameByValue) {
+                async getTicket(zendeskBaseUrl, funcCode, ticketId, showLoadingPage, hideLoadingPage, getZendeskConfigNameByValue, 
+                    getZendeskConfigEmailByKey, getZendeskConfigRoleByKey, getZendeskConfigNameByKey) {
                     showLoadingPage && showLoadingPage();
                     this.showLoadingPage && this.showLoadingPage();
                     const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}`;
@@ -679,20 +811,31 @@
                             }
                             let jsonPath = 'users';
                             let jsonId = result.requester_id;
-                            let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                            result.requesterEmail = userData.user ? userData.user.email : '';
+                            result.requesterEmail = await getZendeskConfigEmailByKey(jsonId);
+                            if (!result.requesterEmail) {
+                                let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                result.requesterEmail = userData.user ? userData.user.email : '';
+                            }
 
                             let jsonIdForAssignee = result.assignee_id;
-                            let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
-                            result.strAgent = agentData.user ? agentData.user.name : '-';
+                            result.strAgent = await getZendeskConfigNameByKey(jsonIdForAssignee);
+                            if (!result.strAgent) {
+                                let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
+                                result.strAgent = agentData.user ? agentData.user.name : '-';
+                            }
                             result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
                             if (result.conversations) {
                                 for (let item of result.conversations) {
                                     jsonId = item.author_id;
-                                    let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                                    result.author_email = userData.user ? userData.user.email : '';
-                                    item.author_email = userData.user ? userData.user.email : '';
-                                    item.role = userData.user ? userData.user.role : '';
+                                    result.author_email = await getZendeskConfigEmailByKey(jsonId);
+                                    item.role = await getZendeskConfigRoleByKey(jsonId);
+                                    if (!result.author_email || !item.role) {
+                                        let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                        result.author_email = userData.user ? userData.user.email : '';
+                                        item.role = userData.user ? userData.user.role : '';
+                                    }
+                                    item.author_email = result.author_email;
+
                                     if (item.public == false) {
                                         item.dynamicColor = "#fff3e4";
                                     } else {
@@ -811,7 +954,8 @@
                     } else {
                         this.showLoadingPage && this.showLoadingPage();
                         this.selectedIdAndSubject = '';
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, this.getZendeskConfigNameByValue);
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                            this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                         this.hideLoadingPage && this.hideLoadingPage();
                     }
                 }
