@@ -766,16 +766,55 @@
                     return result;
                 },
 
-                async getConversation(ticketId, zendeskBaseUrl, funcCodeForComments) {
+                async getConversation(ticketId, zendeskBaseUrl, funcCodeForComments, MAX_RETRIES, computeBackoff, sleep, hideLoadingPage) {
                     let result = 'N/A';
                     if (ticketId && ticketId !== 'null') {
-                        const response = await axios.get(`${zendeskBaseUrl}/getCommentById?code=${funcCodeForComments}&itemId=${ticketId}`);
-                        result = response.data ? response.data.comments : '';
-                    }
+                        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                            try {
+                                    const response = await axios.get(`${zendeskBaseUrl}/getCommentById?code=${funcCodeForComments}&itemId=${ticketId}`);
 
-                    result && result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    //const resultWithoutLastItem = result.slice(0, -1);
-                    return result;
+                                    // 200 OK
+                                    if (response.status === 200) {
+                                        result = response.data ? response.data.comments : '';
+                                        result && result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                                        //const resultWithoutLastItem = result.slice(0, -1);
+                                        return result;
+                                    }
+
+                                    // 429 Rate limited
+                                    if (response.status === 429) {
+                                        let sleepMs = computeBackoff(attempt);
+                                        const retryAfter = response.headers["retry-after"];
+                                        if (retryAfter) {
+                                            const parsed = parseFloat(retryAfter);
+                                            if (!isNaN(parsed)) {
+                                                sleepMs = Math.max(sleepMs, parsed * 1000);
+                                            }
+                                        }
+                                        console.error(`[${pageTitle}] 429 rate limited (attempt ${attempt}/${MAX_RETRIES}). Sleeping ${sleepMs}ms.`);
+                                        await sleep(sleepMs);
+                                        continue;
+                                    }
+
+                                    // Server errors -> retry
+                                    if (response.status >= 500 && response.status < 600) {
+                                        const sleepMs = computeBackoff(attempt);
+                                        console.error(`[${pageTitle}] Server error ${response.status} (attempt ${attempt}/${MAX_RETRIES}). Sleeping ${sleepMs}ms.`);
+                                        await sleep(sleepMs);
+                                        continue;
+                                    }
+
+                                    // Other non-recoverable statuses
+                                    throw new Error(`Zendesk API error ${response.status}: ${response.statusText}`);
+
+                                } catch (err) {
+                                // If API error and response exists, then the status handled above. Otherwise network error.
+                                console.error(`[${pageTitle}] Network error on attempt ${attempt}/${MAX_RETRIES}: ${err.message || err}. Backing off ${sleepMs}ms`);
+                                hideLoadingPage();
+                            }
+
+                        }
+                    }
                 },
 
                 async sleep(ms) {
@@ -846,7 +885,7 @@
                                             let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
                                             result.strAgent = agentData.user ? agentData.user.name : '-';
                                         }
-                                        result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
+                                        result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments, MAX_RETRIES, this.computeBackoff, this.sleep, hideLoadingPage);
                                         if (result.conversations) {
                                             for (let item of result.conversations) {
                                                 jsonId = item.author_id;
