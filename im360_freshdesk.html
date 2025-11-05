@@ -71,7 +71,8 @@
                         </tr>
                         <tr>
                             <td>{{record.strAgent ? record.strAgent : '-'}}</td>
-                            <td>{{zendesk_bcn ? zendesk_bcn : '-'}}</td>
+                            <!-- <td>{{zendesk_bcn ? zendesk_bcn : '-'}}</td> -->
+                            <td>{{record.strBCN ? record.strBCN : '-'}}</td>
                             <td>{{isStage ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value : '-' 
                                 : record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value ? record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value : '-'}}</td>
                             <td>{{isStage ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value : '-'
@@ -177,6 +178,7 @@
         let isStage = true;
         let zendesk_country = '';
         let zendesk_bcn = '';
+        let strBCN = '';  // use this BCN for the ticket search by ticket id (it should come from the Zendesk ticket, not from the Acount itself)
         let zendesk_ticketIdParam = '';
         let appId = '';
         let dashboardId = '';
@@ -694,8 +696,8 @@
                         let url = window.location.protocol + "//" + window.location.host + "/";
                         let fullUrl = `${url}/main.aspx?appid=${this.appId}&pagetype=dashboard&id=${this.dashboardId}&type=system`;
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
-                        // localStorage.setItem('zendesk_country_name', zendesk_country);
-                        // localStorage.setItem('zendesk_bcn', zendesk_bcn);
+                        localStorage.setItem('zendesk_country_name', zendesk_country);
+                        localStorage.setItem('zendesk_bcn', strBCN ? strBCN : this.strBCN);
                         this.hideLoadingPage && this.hideLoadingPage();
 
                         if (this.record) {
@@ -944,6 +946,17 @@
                                         if (!result.strCountry) {
                                             result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
                                         }
+
+                                        let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
+                                        const objBCN = result.custom_fields && result.custom_fields.find(item => item.id === bcnFieldId);
+                                        const bcnValue = objBCN ? objBCN.value : '';
+                                        // result.strBCN = await getZendeskConfigNameByValue(accessToken, log, bcnValue);
+                                        // if (!result.strBCN && bcnValue != 'NA' && bcnValue != 'N/A') {
+                                        //     result.strBCN = bcnValue ? await getCustomFieldValue(log, bcnFieldId.toString(), bcnValue) : '';
+                                        // }
+                                        result.strBCN = bcnValue ? bcnValue : '-';
+                                        strBCN = result.strBCN;
+
                                         hideLoadingPage && hideLoadingPage();
                                         this.hideLoadingPage && this.hideLoadingPage();
                                     }

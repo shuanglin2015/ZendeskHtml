@@ -83,8 +83,11 @@
                         } else {
                             isStage = false;
                         }
-
-                        let tickets = await this.getTickets();
+                        const zendeskCountryName = localStorage.getItem('zendesk_country_name');
+                        const zendeskBCN = localStorage.getItem('zendesk_bcn');
+                        let tickets = await this.getTickets(zendeskCountryName, zendeskBCN);
+                        localStorage.setItem('zendesk_country_name', '');
+                        localStorage.setItem('zendesk_bcn', '')
                         console.log(`${this.pageTitle} - tickets: ${JSON.stringify(tickets)}`);
                         this.generateDatagrid(tickets); 
                     } else {
@@ -163,10 +166,16 @@
                         }
                     },
 
-                    async getTickets() {
+                    async getTickets(zendeskCountryName, zendeskBCN) {
                         let results = [];
-
-                        let fetchXml = "<fetch top='5000'> \
+                        let filter = "<condition attribute='im360_created_at' operator='gt' value='2001-01-01 ' />";
+                        if (zendeskCountryName) {
+                            filter += `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
+                        }
+                        if (zendeskBCN) {
+                            filter += `<condition attribute='im360_ingrambcn' operator='eq' value='${zendeskBCN}' />`;
+                        }
+                        let fetchXml = `<fetch top='5000'> \
                                             <entity name='im360_zendesktickets'> \
                                                 <attribute name='im360_country' /> \
                                                 <attribute name='im360_created_at' /> \
@@ -184,12 +193,13 @@
                                                 <link-entity name='im360_country' from='im360_name' to='im360_country' alias='country'> \
                                                 <attribute name='im360_name' /> \
                                                 <filter type='and'> \
-                                                    <condition attribute='statecode' operator='eq' value='0' /> \
+                                                    <condition attribute='statecode' operator='eq' value='0' />    
                                                 </filter> \
                                                 </link-entity> \
+                                                <filter type='and'> ${filter} </filter> \
                                                 <order descending='true' attribute='im360_created_at' /> \
                                             </entity> \
-                                        </fetch>";
+                                        </fetch>`;
 
                         let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_zendesktickets", "?fetchXml=" + fetchXml).then(
