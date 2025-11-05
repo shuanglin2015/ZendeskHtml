@@ -29,11 +29,6 @@
                           :options="selectOptions" />
             </div>
 
-            <!-- <div class="expand-button">
-                <img src="im360_refresh.png" v-on:click="retrieveTicket" class="expand-image" title="Retrieve ticket" />
-                <input type="text" style="width: 80px;" v-model="inputTicketId" placeholder="Ticket Id" />
-            </div> -->
-
             <div v-if="notFoundMessage" class="not-found">
                 {{notFoundMessage}}
             </div>
@@ -97,6 +92,31 @@
                     <br>
                 </div>
 
+            </div>
+
+            <div v-if="record && record.subject" class="conversation">
+                <div v-if="record.conversations && record.conversations[0]">
+                    <ul>
+                        <li v-for="item in record.conversations" :key="item.id">
+                            <div :style="{ backgroundColor: item.dynamicColor }" class="MainMessageConversation" v-if="item.id != record.conversations[record.conversations.length-1].id">
+                                <strong class="MessageHeader">{{item.created_at && item.created_at.length > 10 ? item.created_at.substring(0, 10) : ''}} {{item.created_at && item.created_at.length > 19 ? item.created_at.substring(11, 19) : ''}} -
+                                    From: {{item.author_email || record.requesterEmail}}</strong>
+                                <div style="margin-left: 20px;" v-html="item.html_body"></div>
+                                <div style="margin-left: 20px;" v-if="item.attachments && item.attachments[0]">
+                                    <strong>Attachments:</strong>
+                                    <ul>
+                                        <li v-for="attach in item.attachments" :key="attach.file_name">
+                                            <a :href="attach.content_url" target="_blank">{{attach.file_name}}</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div v-if="record && record.subject">
                 <div class="MainMessage">
                     <div v-if="record.attachments && record.attachments[0]">
                         <strong>Attachments:</strong>
@@ -128,28 +148,6 @@
                         </div>
                     </div>
                     
-                </div>
-            </div>
-
-            <div v-if="record && record.subject" class="conversation">
-                <div v-if="record.conversations && record.conversations[0]">
-                    <ul>
-                        <li v-for="item in record.conversations" :key="item.id">
-                            <div :style="{ backgroundColor: item.dynamicColor }" class="MainMessageConversation" v-if="item.id != record.conversations[record.conversations.length-1].id">
-                                <strong class="MessageHeader">{{item.created_at && item.created_at.length > 10 ? item.created_at.substring(0, 10) : ''}} {{item.created_at && item.created_at.length > 19 ? item.created_at.substring(11, 19) : ''}} -
-                                    From: {{item.author_email || record.requesterEmail}}</strong>
-                                <div style="margin-left: 20px;" v-html="item.html_body"></div>
-                                <div style="margin-left: 20px;" v-if="item.attachments && item.attachments[0]">
-                                    <strong>Attachments:</strong>
-                                    <ul>
-                                        <li v-for="attach in item.attachments" :key="attach.file_name">
-                                            <a :href="attach.content_url" target="_blank">{{attach.file_name}}</a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
                 </div>
             </div>
             
