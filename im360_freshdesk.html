@@ -778,6 +778,22 @@
                     return result;
                 },
 
+                async sleep(ms) {
+                    return new Promise(resolve => setTimeout(resolve, ms));
+                },
+
+                computeBackoff(attempt) {
+                    const BACKOFF_BASE_MS =  1000;  // Base wait time for exponential backoff (1 second)
+                    const BACKOFF_CAP_MS = 60000;   // Maximum wait time between retries (60 seconds)
+                    // attempt is 1-based
+                    const exp = BACKOFF_BASE_MS * (2 ** (attempt - 1));
+                    const capped = Math.min(exp, BACKOFF_CAP_MS);
+                    // jitter between 0.5*capped and capped
+                    const low = 0.5 * capped;
+                    const jitter = Math.random() * (capped - low) + low;
+                    return Math.floor(jitter);
+                },
+
                 async getCustomFieldValue(fieldId, fieldValue) {
                     let result = fieldValue;
                     let jsonId = fieldId;
@@ -796,101 +812,144 @@
                     this.showLoadingPage && this.showLoadingPage();
                     const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}`;
                     console.log(fullUrl);
-                    if (ticketId && ticketId !== 'null') {
-                        const response = await axios.get(fullUrl);
-                        let result = response.data;
-                        if (result) {
-                            // result = convertValue(result);
+                    let pageTitle = this.pageTitle || 'Zendesk Ticket Viewer';
+                    // API Request & Retry Configuration: Maximum number of retry attempts for failed API calls
+                    const MAX_RETRIES = 6;
 
-                            if (result && result.ticket) {
-                                result = {
-                                ...result,
-                                ...result.ticket
-                                };
-                                delete result.ticket;
-                            }
-                            let jsonPath = 'users';
-                            let jsonId = result.requester_id;
-                            result.requesterEmail = await getZendeskConfigEmailByKey(jsonId);
-                            if (!result.requesterEmail) {
-                                let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                                result.requesterEmail = userData.user ? userData.user.email : '';
-                            }
+                    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                        if (ticketId && ticketId !== 'null') {
+                            try {
+                                const response = await axios.get(fullUrl);
 
-                            let jsonIdForAssignee = result.assignee_id;
-                            result.strAgent = await getZendeskConfigNameByKey(jsonIdForAssignee);
-                            if (!result.strAgent) {
-                                let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
-                                result.strAgent = agentData.user ? agentData.user.name : '-';
-                            }
-                            result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
-                            if (result.conversations) {
-                                for (let item of result.conversations) {
-                                    jsonId = item.author_id;
-                                    result.author_email = await getZendeskConfigEmailByKey(jsonId);
-                                    item.role = await getZendeskConfigRoleByKey(jsonId);
-                                    if (!result.author_email || !item.role) {
-                                        let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                                        result.author_email = userData.user ? userData.user.email : '';
-                                        item.role = userData.user ? userData.user.role : '';
-                                    }
-                                    item.author_email = result.author_email;
-
-                                    if (item.public == false) {
-                                        item.dynamicColor = "#fff3e4";
-                                    } else {
-                                        if (item.role == "agent") {
-                                            item.dynamicColor = "#f8f9f9";
+                                // 200 OK
+                                if (response.status === 200) {
+                                    let result = response.data;
+                                    if (result) {
+                                        if (result && result.ticket) {
+                                            result = {
+                                            ...result,
+                                            ...result.ticket
+                                            };
+                                            delete result.ticket;
                                         }
-                                        if (item.role == "end-user") {
-                                            item.dynamicColor = "#ecf9f9";
+                                        let jsonPath = 'users';
+                                        let jsonId = result.requester_id;
+                                        result.requesterEmail = await getZendeskConfigEmailByKey(jsonId);
+                                        if (!result.requesterEmail) {
+                                            let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                            result.requesterEmail = userData.user ? userData.user.email : '';
                                         }
+
+                                        let jsonIdForAssignee = result.assignee_id;
+                                        result.strAgent = await getZendeskConfigNameByKey(jsonIdForAssignee);
+                                        if (!result.strAgent) {
+                                            let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
+                                            result.strAgent = agentData.user ? agentData.user.name : '-';
+                                        }
+                                        result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments);
+                                        if (result.conversations) {
+                                            for (let item of result.conversations) {
+                                                jsonId = item.author_id;
+                                                result.author_email = await getZendeskConfigEmailByKey(jsonId);
+                                                item.role = await getZendeskConfigRoleByKey(jsonId);
+                                                if (!result.author_email || !item.role) {
+                                                    let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                                    result.author_email = userData.user ? userData.user.email : '';
+                                                    item.role = userData.user ? userData.user.role : '';
+                                                }
+                                                item.author_email = result.author_email;
+
+                                                if (item.public == false) {
+                                                    item.dynamicColor = "#fff3e4";
+                                                } else {
+                                                    if (item.role == "agent") {
+                                                        item.dynamicColor = "#f8f9f9";
+                                                    }
+                                                    if (item.role == "end-user") {
+                                                        item.dynamicColor = "#ecf9f9";
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        let domainFieldId = isStage ? 31042462931476 : 34698829065236;
+                                        const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
+                                        const domainValue = objDomain ? objDomain.value : '';
+                                        result.strDomain = await getZendeskConfigNameByValue(domainValue);
+                                        if (!result.strDomain) {
+                                            result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '';
+                                        }
+                                        let supportTierFieldId = isStage ? 33937714050708 : 34698770438676;
+                                        const objTier = result.custom_fields && result.custom_fields.find(item => item.id === supportTierFieldId);
+                                        const tierValue = objTier ? objTier.value : '';
+                                        result.strSupportTier = await getZendeskConfigNameByValue(tierValue);
+                                        if (!result.strSupportTier) {
+                                            result.strSupportTier = tierValue ? await this.getCustomFieldValue(supportTierFieldId, tierValue) : '';
+                                        }
+                                        let platformFieldId = isStage ? 35415435690388 : 35228789545364;
+                                        const objPlatform = result.custom_fields && result.custom_fields.find(item => item.id === platformFieldId);
+                                        const platformValue = objPlatform ? objPlatform.value : '';
+                                        result.strPlatform = await getZendeskConfigNameByValue(platformValue);
+                                        if (!result.strPlatform) {
+                                            result.strPlatform = platformValue ? await this.getCustomFieldValue(platformFieldId, platformValue) : '';
+                                        }
+                                        let vendorFieldId = isStage ? 36211322445460 : 35229050467860;
+                                        const objVendor = result.custom_fields && result.custom_fields.find(item => item.id === vendorFieldId);
+                                        const vendorValue = objVendor ? objVendor.value : '';
+                                        result.strVendor = await getZendeskConfigNameByValue(vendorValue);
+                                        if (!result.strVendor) {
+                                            result.strVendor = vendorValue ? await this.getCustomFieldValue(vendorFieldId, vendorValue) : '';
+                                        }
+                                        let countryFieldId = isStage ? 31959436739604 : 35138178531732;
+                                        const objCountry = result.custom_fields && result.custom_fields.find(item => item.id === countryFieldId);
+                                        const countryValue = objCountry ? objCountry.value : '';
+                                        result.strCountry = await getZendeskConfigNameByValue(countryValue);
+                                        if (!result.strCountry) {
+                                            result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
+                                        }
+                                        hideLoadingPage && hideLoadingPage();
+                                        this.hideLoadingPage && this.hideLoadingPage();
                                     }
+                                    
+                                    return result;
                                 }
+
+                                // 429 Rate limited
+                                if (response.status === 429) {
+                                    let sleepMs = this.computeBackoff(attempt);
+                                    const retryAfter = response.headers["retry-after"];
+                                    if (retryAfter) {
+                                        const parsed = parseFloat(retryAfter);
+                                        if (!isNaN(parsed)) {
+                                            sleepMs = Math.max(sleepMs, parsed * 1000);
+                                        }
+                                    }
+                                    console.error(`[${pageTitle}] 429 rate limited (attempt ${attempt}/${MAX_RETRIES}). Sleeping ${sleepMs}ms.`);
+                                    await this.sleep(sleepMs);
+                                    continue;
+                                }
+
+                                // Server errors -> retry
+                                if (response.status >= 500 && response.status < 600) {
+                                    const sleepMs = this.computeBackoff(attempt);
+                                    console.error(`[${pageTitle}] Server error ${response.status} (attempt ${attempt}/${MAX_RETRIES}). Sleeping ${sleepMs}ms.`);
+                                    await this.sleep(sleepMs);
+                                    continue;
+                                }
+
+                                // Other non-recoverable statuses
+                                throw new Error(`Zendesk API error ${response.status}: ${response.statusText}`);
+
+                            } catch (err) {
+                                // If API error and response exists, then the status handled above. Otherwise network error.
+                                console.error(`[${pageTitle}] Network error on attempt ${attempt}/${MAX_RETRIES}: ${err.message || err}. Backing off ${sleepMs}ms`);
+                                hideLoadingPage();
                             }
-                            
-                            let domainFieldId = isStage ? 31042462931476 : 34698829065236;
-                            const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
-                            const domainValue = objDomain ? objDomain.value : '';
-                            result.strDomain = await getZendeskConfigNameByValue(domainValue);
-                            if (!result.strDomain) {
-                                 result.strDomain = domainValue? await this.getCustomFieldValue(domainFieldId, domainValue) : '';
-                            }
-                            let supportTierFieldId = isStage ? 33937714050708 : 34698770438676;
-                            const objTier = result.custom_fields && result.custom_fields.find(item => item.id === supportTierFieldId);
-                            const tierValue = objTier ? objTier.value : '';
-                            result.strSupportTier = await getZendeskConfigNameByValue(tierValue);
-                            if (!result.strSupportTier) {
-                                result.strSupportTier = tierValue ? await this.getCustomFieldValue(supportTierFieldId, tierValue) : '';
-                            }
-                            let platformFieldId = isStage ? 35415435690388 : 35228789545364;
-                            const objPlatform = result.custom_fields && result.custom_fields.find(item => item.id === platformFieldId);
-                            const platformValue = objPlatform ? objPlatform.value : '';
-                            result.strPlatform = await getZendeskConfigNameByValue(platformValue);
-                            if (!result.strPlatform) {
-                                result.strPlatform = platformValue ? await this.getCustomFieldValue(platformFieldId, platformValue) : '';
-                            }
-                            let vendorFieldId = isStage ? 36211322445460 : 35229050467860;
-                            const objVendor = result.custom_fields && result.custom_fields.find(item => item.id === vendorFieldId);
-                            const vendorValue = objVendor ? objVendor.value : '';
-                            result.strVendor = await getZendeskConfigNameByValue(vendorValue);
-                            if (!result.strVendor) {
-                                result.strVendor = vendorValue ? await this.getCustomFieldValue(vendorFieldId, vendorValue) : '';
-                            }
-                            let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                            const objCountry = result.custom_fields && result.custom_fields.find(item => item.id === countryFieldId);
-                            const countryValue = objCountry ? objCountry.value : '';
-                            result.strCountry = await getZendeskConfigNameByValue(countryValue);
-                            if (!result.strCountry) {
-                                result.strCountry = countryValue ? await this.getCustomFieldValue(countryFieldId, countryValue) : '';
-                            }
-                            hideLoadingPage && hideLoadingPage();
-                            this.hideLoadingPage && this.hideLoadingPage();
+
+
+                        } else {
+                            return null;
                         }
-                        
-                        return result;
-                    } else {
-                        return null;
                     }
                 },
 
