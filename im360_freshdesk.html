@@ -99,7 +99,7 @@
                 <div v-if="record.conversations && record.conversations[0]">
                     <ul>
                         <li v-for="item in record.conversations" :key="item.id">
-                            <div :style="{ backgroundColor: item.dynamicColor }" class="MainMessageConversation" v-if="item.id != record.conversations[record.conversations.length-1].id">
+                            <div :style="{ backgroundColor: item.dynamicColor }" class="MainMessageConversation">
                                 <strong class="MessageHeader">{{item.created_at && item.created_at.length > 10 ? item.created_at.substring(0, 10) : ''}} {{item.created_at && item.created_at.length > 19 ? item.created_at.substring(11, 19) : ''}} -
                                     From: {{item.author_email || record.requesterEmail}}</strong>
                                 <div style="margin-left: 20px;" v-html="item.html_body"></div>
@@ -117,7 +117,7 @@
                 </div>
             </div>
 
-            <div v-if="record && record.subject">
+            <!-- <div v-if="record && record.subject">
                 <div class="MainMessage">
                     <div v-if="record.attachments && record.attachments[0]">
                         <strong>Attachments:</strong>
@@ -150,7 +150,7 @@
                     </div>
                     
                 </div>
-            </div>
+            </div> -->
             
             <div v-if="!notFoundMessage" class="collapse-ticket-summary">
                 <el-row>
@@ -229,6 +229,12 @@
                 inputTicketId: '',
             },
             async mounted() {
+                let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
+                let userName = userSettings && userSettings.userName;
+                //let userRoles = userSettings && userSettings.securityRoles && userSettings.securityRoles.toLowerCase();
+                console.log(`${this.pageTitle} - signed in user name is: ${userName}`);
+                // TODO: if userName contains the 4 tester names, then show this page, otherwise show "Page Under Construction" (check fields "ProductionTestingFinished" in zendeskConfig to ignore this and show this page for all users)
+
                 // Wait for vue-select to render, then attach key listener
                 this.$nextTick(() => {
                     const inputEl = this.$refs.mySelect.$el.querySelector('input');
