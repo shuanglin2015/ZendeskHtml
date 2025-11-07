@@ -309,7 +309,7 @@
                         this.selectOptions = selectOptions;
                         this.items = items;
                         let ticketId = getTicketId(selected);
-                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                             this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey,this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                         let id = this.record['id'];
                         let subjectGet = this.record['subject'];
@@ -337,7 +337,7 @@
                             this.selectOptions = selectOptions;
                             this.items = items;
                             let ticketId = getTicketId(selected);
-                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                             let id = this.record['id'];
                             let subjectGet = this.record['subject'];
@@ -719,7 +719,10 @@
                     } else {
                         this.showLoadingPage && this.showLoadingPage();
                         const ticketId = getTicketId(this.selectedIdAndSubject);
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+
+                        let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
+                        let userName = userSettings && userSettings.userName;
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                             this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                         this.hideLoadingPage && this.hideLoadingPage();
                     }
@@ -743,7 +746,9 @@
                             }
                             this.showLoadingPage && this.showLoadingPage();
                             this.selectedIdAndSubject = ticketId;
-                            this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                            let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
+                            let userName = userSettings && userSettings.userName;
+                            this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                             this.hideLoadingPage && this.hideLoadingPage();
                         } else {
@@ -851,11 +856,11 @@
                     return result;
                 },
 
-                async getTicket(zendeskBaseUrl, funcCode, ticketId, showLoadingPage, hideLoadingPage, getZendeskConfigNameByValue, 
+                async getTicket(zendeskBaseUrl, funcCode, ticketId, userName, showLoadingPage, hideLoadingPage, getZendeskConfigNameByValue, 
                     getZendeskConfigEmailByKey, getZendeskConfigRoleByKey, getZendeskConfigNameByKey) {
                     showLoadingPage && showLoadingPage();
                     this.showLoadingPage && this.showLoadingPage();
-                    const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}`;
+                    const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}&userName=${userName}`;
                     console.log(fullUrl);
                     let pageTitle = this.pageTitle || 'Zendesk Ticket Viewer';
                     // API Request & Retry Configuration: Maximum number of retry attempts for failed API calls
@@ -1069,7 +1074,7 @@
                     } else {
                         this.showLoadingPage && this.showLoadingPage();
                         this.selectedIdAndSubject = '';
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, this.showLoadingPage, this.hideLoadingPage, 
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, '', this.showLoadingPage, this.hideLoadingPage, 
                             this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                         this.hideLoadingPage && this.hideLoadingPage();
                     }
