@@ -819,11 +819,13 @@
                                     throw new Error(`Zendesk API error ${response.status}: ${response.statusText}`);
 
                                 } catch (err) {
-                                // If API error and response exists, then the status handled above. Otherwise network error.
-                                console.error(`[${pageTitle}] Network error on attempt ${attempt}/${MAX_RETRIES}: ${err.message || err}. Backing off ${sleepMs}ms`);
-                                hideLoadingPage();
-                            }
-
+                                    // If API error and response exists, then the status handled above. Otherwise network error.
+                                    let sleepMs = this.computeBackoff(attempt);
+                                    console.error(`[${pageTitle}] Network error on attempt ${attempt}/${MAX_RETRIES}: ${err.message || err}. Backing off ${sleepMs}ms`);
+                                    await this.sleep(sleepMs);
+                                    hideLoadingPage && hideLoadingPage();
+                                    this.hideLoadingPage && this.hideLoadingPage();
+                                }
                         }
                     }
                 },
@@ -1003,12 +1005,17 @@
 
                             } catch (err) {
                                 // If API error and response exists, then the status handled above. Otherwise network error.
+                                let sleepMs = this.computeBackoff(attempt);
                                 console.error(`[${pageTitle}] Network error on attempt ${attempt}/${MAX_RETRIES}: ${err.message || err}. Backing off ${sleepMs}ms`);
-                                hideLoadingPage();
+                                await this.sleep(sleepMs);
+                                hideLoadingPage && hideLoadingPage();
+                                this.hideLoadingPage && this.hideLoadingPage();
                             }
 
 
                         } else {
+                            hideLoadingPage && hideLoadingPage();
+                            this.hideLoadingPage && this.hideLoadingPage();
                             return null;
                         }
                     }
