@@ -182,6 +182,8 @@
         let zendesk_ticketIdParam = '';
         let appId = '';
         let dashboardId = '';
+        let originalResellerCountry = '';
+        let originalResellerBCN = '';
 
         function setClientApiContext(Xrm, context, accountBCN, newnavigationtab) {
             var pageTitle = 'Zendesk';
@@ -251,6 +253,8 @@
                     if (account) {
                         zendesk_country = account.CountryName;
                         zendesk_bcn = account.im360_bcn;
+                        originalResellerCountry = zendesk_country;
+                        originalResellerBCN = zendesk_bcn;
                     }
                 }
                 console.log(`${this.pageTitle} - zendesk_country value in mounted(): ${zendesk_country}`);
@@ -741,16 +745,33 @@
                         if (!isNaN(inputValue)) {
                             // retrieveTicket();
                             let ticketId = inputValue;
-                            if (!this.selectOptions.includes(ticketId)) {
-                                this.selectOptions.unshift(ticketId);  // add ticketId as the first item of the array
-                            }
+                            
                             this.showLoadingPage && this.showLoadingPage();
                             this.selectedIdAndSubject = ticketId;
                             let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
                             let userName = userSettings && userSettings.userName;
-                            this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
+                            let ticket = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
-                            this.hideLoadingPage && this.hideLoadingPage();
+
+                            // check if the ticket id belong to this reseller
+                            let ticketCountry = ticket && ticket.strCountry && ticket.strCountry.toLowerCase().trim();
+                            let resellerCountry = originalResellerCountry && originalResellerCountry.toLowerCase().trim();
+                            let ticketBCN = ticket && ticket.strBCN && ticket.strBCN;
+                            let resellerBCN = originalResellerBCN;
+                            let belongToReseller = ((ticketCountry == resellerCountry) && (ticketBCN == resellerBCN));
+                            if (belongToReseller && ticketCountry != '-' && ticketBCN != '-') {
+                                this.record = ticket;
+                                let idAndSubject = `${ticketId}.${ticket.subject}`;
+                                if (!this.selectOptions.includes(idAndSubject)) {
+                                    this.selectOptions.unshift(idAndSubject);  // add ticketId and subject as the first item of the array
+                                }
+                                this.hideLoadingPage && this.hideLoadingPage();
+                            } else {
+                                let msg = "The ticket ID you searched for does not belong to the current reseller. Please search under the correct reseller account or use the Support Tickets dashboard to locate it.";
+                                Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg })
+                                this.hideLoadingPage && this.hideLoadingPage();
+                            }
+                            
                         } else {
                             this.hideLoadingPage && this.hideLoadingPage();
                             let ticketId = getTicketId(inputValue);
