@@ -632,7 +632,7 @@
                                             <attribute name='im360_resolvehours' /> \
                                             <attribute name='im360_status' /> \
                                             <attribute name='im360_ticketid' /> \
-                                            <attribute name='im360_ticketsubjectline' /> \
+                                            <attribute name='im360_name' /> \
                                             <attribute name='im360_updated_at' /> \
                                                 <filter type='and'> \
                                                     <condition attribute='im360_country' operator='eq' value='${zendesk_country}' /> \
@@ -655,18 +655,18 @@
                             if (result != null) {
                                 items = result.entities;
                                 if (items && items.length > 0) {
-                                    selected = `${items[0]['im360_ticketid']}.${items[0]['im360_ticketsubjectline']}`;
+                                    selected = `${items[0]['im360_ticketid']}.${items[0]['im360_name']}`;
                                     if (selectedTicketId) {
                                         items.forEach(item => {
                                             if(item['im360_ticketid'] && (item['im360_ticketid'].toString() == selectedTicketId)) {
-                                                selected = `${item['im360_ticketid']}.${item['im360_ticketsubjectline']}`;
+                                                selected = `${item['im360_ticketid']}.${item['im360_name']}`;
                                             }
                                         });
                                     }
 
                                     selectOptions = [];
                                     items.forEach(item => {
-                                        selectOptions.push(`${item.im360_ticketid}.${item.im360_ticketsubjectline}`);
+                                        selectOptions.push(`${item.im360_ticketid}.${item.im360_name}`);
                                     });
                                     if (selectOptions.length > 0) {
                                         let newOption = 'View more tickets...';
@@ -712,7 +712,7 @@
 
                         if (this.record) {
                             let id = this.record['im360_ticketid'] || this.record['id'];
-                            let subjectGet = this.record['im360_ticketsubjectline'] || this.record['subject'];
+                            let subjectGet = this.record['im360_name'] || this.record['subject'];
                             this.selectedIdAndSubject = `${id}.${subjectGet}`;
                         } else {
                             this.selectedIdAndSubject = '';

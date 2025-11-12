@@ -85,7 +85,22 @@
                         }
                         const zendeskCountryName = localStorage.getItem('zendesk_country_name');
                         const zendeskBCN = localStorage.getItem('zendesk_bcn');
-                        let tickets = await this.getTickets(zendeskCountryName, zendeskBCN);
+                        let loadOptions = {
+                            skip: 0,             // how many records to skip (for paging)
+                            take: 100,           // how many records to load (page size)
+                            sort: [
+                                { selector: "im360_ticketid", desc: true }
+                            ],
+                            filter: [
+                                ["im360_created_at", "gt", "1980-01-01"]
+                            ],
+                            searchExpr: ['im360_ticketid', 'im360_country', 'im360_ingrambcn', 'im360_partneremailaddress', 'im360_resellername', 'im360_name', 'im360_status', 'im360_domain', 'im360_priority'], // which fields to search
+                            searchOperation: "contains",
+                            searchValue: "john",           // search panel text
+                            requireTotalCount: false,       // if grid needs total record count
+                        };
+                        let tickets = await this.getTickets(loadOptions, zendeskCountryName, zendeskBCN);
+                        //let tickets = await this.getTickets(loadOptions);
                         localStorage.setItem('zendesk_country_name', '');
                         localStorage.setItem('zendesk_bcn', '')
                         console.log(`${this.pageTitle} - tickets: ${JSON.stringify(tickets)}`);
@@ -166,6 +181,102 @@
                         }
                     },
 
+                    // async getTickets (loadOptions) {
+                    //     console.log("loadOptions:", loadOptions);
+                    //     const entityName = "im360_zendesktickets";
+                    //     const pageSize = loadOptions.take || 100;
+                    //     const currentSkip = loadOptions.skip || 0;
+                    //     const requestedPage = Math.floor(currentSkip / pageSize) + 1;
+
+                    //     // Reset cookie if we start over (new filter/search/sort)
+                    //     if (requestedPage < lastPage) {
+                    //         pagingCookie = null;
+                    //         lastPage = 1;
+                    //     }
+
+                    //     // --- FILTERING (filterRow) ---
+                    //     let filterXml = "";
+                    //     if (loadOptions.filter) {
+                    //         filterXml += buildFetchFilterXml(loadOptions.filter);
+                    //     }
+
+                    //     // --- SEARCH PANEL (search across fields) ---
+                    //     if (loadOptions.searchValue && loadOptions.searchExpr) {
+                    //         const searchValue = loadOptions.searchValue;
+                    //         const fields = Array.isArray(loadOptions.searchExpr)
+                    //         ? loadOptions.searchExpr
+                    //         : [loadOptions.searchExpr];
+
+                    //         // Build an OR filter for all search fields
+                    //         filterXml += `<filter type="or">
+                    //         ${fields
+                    //             .map(
+                    //             f =>
+                    //                 `<condition attribute="${f}" operator="like" value="%${searchValue}%" />`
+                    //             )
+                    //             .join("")}
+                    //         </filter>`;
+                    //     }
+
+                    //     // --- SORTING ---
+                    //     let orderXml = "";
+                    //     if (loadOptions.sort && loadOptions.sort.length > 0) {
+                    //         const sort = loadOptions.sort[0];
+                    //         orderXml = `<order attribute="${sort.selector}" descending="${sort.desc}" />`;
+                    //     } else {
+                    //         orderXml = `<order attribute="createdon" descending="true" />`; // default
+                    //     }
+
+                    //     // --- FINAL FetchXML ---
+                    //     const fetchXml = `
+                    //         <fetch count='${pageSize}' page='${requestedPage}'>
+                    //         ${pagingCookie ? pagingCookie : ""}
+                    //         <entity name='${entityName}'>
+                    //             <attribute name='new_customentityid' />
+                    //             <attribute name='new_name' />
+                    //             <attribute name='statuscode' />
+                    //             <attribute name='prioritycode' />
+                    //             <attribute name='createdon' />
+                    //             <filter type='and'>
+                    //             ${filterXml}
+                    //             </filter>
+                    //             ${orderXml}
+                    //         </entity>
+                    //         </fetch>
+                    //     `;
+
+                    //     const encodedFetchXml = "?fetchXml=" + encodeURIComponent(fetchXml);
+
+                    //     try {
+                    //         const result = await Xrm.WebApi.retrieveMultipleRecords(entityName, encodedFetchXml);
+
+                    //         // Save paging-cookie for next batch
+                    //         if (result["@Microsoft.Dynamics.CRM.fetchxmlpagingcookie"]) {
+                    //         pagingCookie = result["@Microsoft.Dynamics.CRM.fetchxmlpagingcookie"];
+                    //         lastPage = requestedPage;
+                    //         } else {
+                    //         pagingCookie = null; // reached end
+                    //         }
+
+                    //         // Map data
+                    //         const items = result.entities.map(e => ({
+                    //         id: e["new_customentityid"],
+                    //         name: e["new_name"],
+                    //         status: e["statuscode@OData.Community.Display.V1.FormattedValue"],
+                    //         priority: e["prioritycode@OData.Community.Display.V1.FormattedValue"],
+                    //         createdon: e["createdon"]
+                    //         }));
+
+                    //         return {
+                    //         data: items,
+                    //         totalCount: requestedPage * pageSize + items.length,
+                    //         };
+                    //     } catch (err) {
+                    //         console.error("FetchXML load error:", err);
+                    //         throw err;
+                    //     }
+                    // },
+                    
                     async getTickets(zendeskCountryName, zendeskBCN) {
                         let results = [];
                         let filter = "<condition attribute='im360_created_at' operator='gt' value='2001-01-01 ' />";
@@ -188,7 +299,6 @@
                                                 <attribute name='im360_resolvehours' /> \
                                                 <attribute name='im360_status' /> \
                                                 <attribute name='im360_ticketid' /> \
-                                                <attribute name='im360_ticketsubjectline' /> \
                                                 <attribute name='im360_updated_at' /> \
                                                 <link-entity name='im360_country' from='im360_name' to='im360_country' alias='country'> \
                                                 <attribute name='im360_name' /> \
@@ -208,14 +318,14 @@
                                     let items = result.entities;
                                     if (items && items.length > 0) {
                                         items.forEach(item => {
-                                            if (item && item.im360_ticketsubjectline) {
+                                            if (item && item.im360_name) {
                                                 let itemNew = {
                                                     'TicketId': item.im360_ticketid,
                                                     'Country': item.im360_country ? item.im360_country : '-',
                                                     'Ingram BCN#': item.im360_ingrambcn ? item.im360_ingrambcn : '-',
                                                     'Partner email address': item.im360_partneremailaddress ? item.im360_partneremailaddress : '-',
                                                     'Reseller Name': item.im360_resellername ? item.im360_resellername : '-',
-                                                    'Ticket subject line': item.im360_ticketsubjectline ? item.im360_ticketsubjectline : '-',
+                                                    'Ticket subject line': item.im360_name ? item.im360_name : '-',
                                                     'Status': item.im360_status ? item.im360_status : '-',
                                                     'Domain': item.im360_domain ? item.im360_domain : '-',
                                                     'Priority': item.im360_priority ? item.im360_priority : '-'
