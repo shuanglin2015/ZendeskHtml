@@ -33,6 +33,7 @@
             let isStage = true;
             let zendeskBaseUrl = '';
             let funcCodeForJsonById = '';
+            let finalFilterArr = ["<condition attribute='im360_created_at' operator='gt' value='1989-01-01 ' />"];
 
             let app = new Vue({
                 el: '#app',
@@ -99,7 +100,7 @@
                             searchValue: "john",           // search panel text
                             requireTotalCount: false,       // if grid needs total record count
                         };
-                        let tickets = await this.getTickets(loadOptions, zendeskCountryName, zendeskBCN);
+                        let tickets = await this.getTickets(zendeskCountryName, zendeskBCN);
                         //let tickets = await this.getTickets(loadOptions);
                         localStorage.setItem('zendesk_country_name', '');
                         localStorage.setItem('zendesk_bcn', '')
@@ -279,15 +280,17 @@
                     
                     async getTickets(zendeskCountryName, zendeskBCN) {
                         let results = [];
-                        let filter = "<condition attribute='im360_created_at' operator='gt' value='2001-01-01 ' />";
+                        //let filter = "<condition attribute='im360_created_at' operator='gt' value='2001-01-01 ' />";
                         if (zendeskCountryName) {
-                            filter += `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
+                            finalFilterArr.push(`<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`);
                         }
                         if (zendeskBCN) {
-                            filter += `<condition attribute='im360_ingrambcn' operator='eq' value='${zendeskBCN}' />`;
+                            finalFilterArr.push(`<condition attribute='im360_ingrambcn' operator='eq' value='${zendeskBCN}' />`);
                         }
+
                         let fetchXml = `<fetch top='5000'> \
                                             <entity name='im360_zendesktickets'> \
+                                                <attribute name='im360_name' /> \
                                                 <attribute name='im360_country' /> \
                                                 <attribute name='im360_created_at' /> \
                                                 <attribute name='im360_domain' /> \
@@ -306,7 +309,7 @@
                                                     <condition attribute='statecode' operator='eq' value='0' />    
                                                 </filter> \
                                                 </link-entity> \
-                                                <filter type='and'> ${filter} </filter> \
+                                                <filter type='and'> ${finalFilterArr.toString()} </filter> \
                                                 <order descending='true' attribute='im360_created_at' /> \
                                             </entity> \
                                         </fetch>`;
@@ -383,6 +386,76 @@
                             showRowLines: true,
                             showScrollbar: true,
                             useNative: false,
+                            onInitialized(e) {
+                                window.gridInstance = e.component; // store grid reference globally if needed
+                            },
+                            onOptionChanged(e) {
+                                if (e.name != "hoveredElement") {
+                                    if (e.name === "columns") {
+                                        clearTimeout(window.searchTimer);
+                                        window.searchTimer = setTimeout(() => {
+                                            e.component.refresh(); // reload data
+                                        }, 800); // wait 800ms after user stops typing
+                                    }
+
+                                    // // global search:
+                                    // if (e.name === "searchPanel" && e.fullName === "searchPanel.text") {
+                                    //     console.log("User global search value changed:", e.value);
+                                    // }
+                                    
+                                    // (1) search Ticket id:
+                                    if (e.name === "columns" && e.fullName === "columns[0].filterValue") {
+                                        let filter = `<condition attribute='im360_ticketid' operator='eq' value='${e.value}' />`;
+                                        let partOfFilter = "<condition attribute='im360_ticketid'";
+                                        finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfFilter));
+                                        if (e.value) {
+                                            finalFilterArr.push(filter);
+                                        }
+                                        // trigger the data retrieve
+                                        console.log("User column search value changed for Ticket id:", e.value);
+                                    }
+
+                                    // (2) search Country:
+                                    if (e.name === "columns" && e.fullName === "columns[1].filterValue") {
+                                        console.log("User column search value changed for Country:", e.value);
+                                    }
+
+                                    // (3) search Ingram BCN#:
+                                    if (e.name === "columns" && e.fullName === "columns[2].filterValue") {
+                                        console.log("User column search value changed for Ingram BCN#:", e.value);
+                                    }
+
+                                    // (4) search Partner email address:
+                                    if (e.name === "columns" && e.fullName === "columns[3].filterValue") {
+                                        console.log("User column search value changed for Partner email address:", e.value);
+                                    }
+
+                                    // (5) search Reseller Name:
+                                    if (e.name === "columns" && e.fullName === "columns[4].filterValue") {
+                                        console.log("User column search value changed for Reseller Name:", e.value);
+                                    }
+
+                                    // (6) search Ticket subject line:
+                                    if (e.name === "columns" && e.fullName === "columns[5].filterValue") {
+                                        console.log("User column search value changed for Ticket subject line:", e.value);
+                                    }
+
+                                    // (7) search Status:
+                                    if (e.name === "columns" && e.fullName === "columns[6].filterValue") {
+                                        console.log("User column search value changed for Status:", e.value);
+                                    }
+
+                                    // (8) search Domain:
+                                    if (e.name === "columns" && e.fullName === "columns[7].filterValue") {
+                                        console.log("User column search value changed for Domain:", e.value);
+                                    }
+
+                                    // (9) search Priority:
+                                    if (e.name === "columns" && e.fullName === "columns[8].filterValue") {
+                                        console.log("User column search value changed for Priority:", e.value);
+                                    }
+                                }
+                            },
                             onRowClick: async function (e) {
                                 let data = e.data; // selectedItems.selectedRowsData[0];
                                 console.log(`${pageTitle} - onRowClick -> data: ${JSON.stringify(data)}`);
