@@ -34,6 +34,8 @@
             let zendeskBaseUrl = '';
             let funcCodeForJsonById = '';
             let finalFilterArr = ["<condition attribute='im360_created_at' operator='gt' value='1989-01-01 ' />"];
+            let zendeskCountryName = '';
+            let zendeskBCN = '';
 
             let app = new Vue({
                 el: '#app',
@@ -84,28 +86,27 @@
                         } else {
                             isStage = false;
                         }
-                        const zendeskCountryName = localStorage.getItem('zendesk_country_name');
-                        const zendeskBCN = localStorage.getItem('zendesk_bcn');
-                        let loadOptions = {
-                            skip: 0,             // how many records to skip (for paging)
-                            take: 100,           // how many records to load (page size)
-                            sort: [
-                                { selector: "im360_ticketid", desc: true }
-                            ],
-                            filter: [
-                                ["im360_created_at", "gt", "1980-01-01"]
-                            ],
-                            searchExpr: ['im360_ticketid', 'im360_country', 'im360_ingrambcn', 'im360_partneremailaddress', 'im360_resellername', 'im360_name', 'im360_status', 'im360_domain', 'im360_priority'], // which fields to search
-                            searchOperation: "contains",
-                            searchValue: "john",           // search panel text
-                            requireTotalCount: false,       // if grid needs total record count
-                        };
-                        let tickets = await this.getTickets(zendeskCountryName, zendeskBCN);
+                        zendeskCountryName = localStorage.getItem('zendesk_country_name');
+                        zendeskBCN = localStorage.getItem('zendesk_bcn');
+                        // let loadOptions = {
+                        //     skip: 0,             // how many records to skip (for paging)
+                        //     take: 100,           // how many records to load (page size)
+                        //     sort: [
+                        //         { selector: "im360_ticketid", desc: true }
+                        //     ],
+                        //     filter: [
+                        //         ["im360_created_at", "gt", "1980-01-01"]
+                        //     ],
+                        //     searchExpr: ['im360_ticketid', 'im360_country', 'im360_ingrambcn', 'im360_partneremailaddress', 'im360_resellername', 'im360_name', 'im360_status', 'im360_domain', 'im360_priority'], // which fields to search
+                        //     searchOperation: "contains",
+                        //     searchValue: "john",           // search panel text
+                        //     requireTotalCount: false,       // if grid needs total record count
+                        // };
                         //let tickets = await this.getTickets(loadOptions);
+                        //console.log(`${this.pageTitle} - tickets: ${JSON.stringify(tickets)}`);
                         localStorage.setItem('zendesk_country_name', '');
                         localStorage.setItem('zendesk_bcn', '')
-                        console.log(`${this.pageTitle} - tickets: ${JSON.stringify(tickets)}`);
-                        this.generateDatagrid(tickets); 
+                        this.generateDatagrid(this.getTickets); 
                     } else {
                         console.error(`${this.pageTitle} - Zendesk API URL is null`);
                     }
@@ -278,18 +279,27 @@
                     //     }
                     // },
                     
-                    async getTickets(zendeskCountryName, zendeskBCN) {
+                    async getTickets() {
                         let results = [];
                         //let filter = "<condition attribute='im360_created_at' operator='gt' value='2001-01-01 ' />";
+
+                        let countryFilter = `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
+                        let partOfCountryFilter = "<condition attribute='im360_country'";
+                        finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
                         if (zendeskCountryName) {
-                            finalFilterArr.push(`<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`);
+                            finalFilterArr.push(countryFilter);
                         }
+
+                        let bcnFilter = `<condition attribute='im360_ingrambcn' operator='eq' value='${zendeskBCN}' />`;
+                        let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
+                        finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
                         if (zendeskBCN) {
-                            finalFilterArr.push(`<condition attribute='im360_ingrambcn' operator='eq' value='${zendeskBCN}' />`);
+                            finalFilterArr.push(bcnFilter);
                         }
 
                         let fetchXml = `<fetch top='5000'> \
                                             <entity name='im360_zendesktickets'> \
+                                                <attribute name='im360_ticketid' /> \
                                                 <attribute name='im360_name' /> \
                                                 <attribute name='im360_country' /> \
                                                 <attribute name='im360_created_at' /> \
@@ -301,12 +311,11 @@
                                                 <attribute name='im360_resolved_at' /> \
                                                 <attribute name='im360_resolvehours' /> \
                                                 <attribute name='im360_status' /> \
-                                                <attribute name='im360_ticketid' /> \
                                                 <attribute name='im360_updated_at' /> \
                                                 <link-entity name='im360_country' from='im360_name' to='im360_country' alias='country'> \
                                                 <attribute name='im360_name' /> \
                                                 <filter type='and'> \
-                                                    <condition attribute='statecode' operator='eq' value='0' />    
+                                                    <condition attribute='statecode' operator='eq' value='0' /> \
                                                 </filter> \
                                                 </link-entity> \
                                                 <filter type='and'> ${finalFilterArr.toString()} </filter> \
@@ -353,14 +362,18 @@
                         );
                     },
 
-                    generateDatagrid(ticketsArr) {
+                    generateDatagrid(getTickets) {
                         let pageTitle = this.pageTitle;
                         let appId = this.appId;
                         let formId = this.formId;
                         let getAccountIdByCountryAndBCN = this.getAccountIdByCountryAndBCN;
 
+                        // dataSource: ticketsArr,
                         $("#gridContainer").dxDataGrid({
-                            dataSource: ticketsArr,
+                            dataSource: new DevExpress.data.CustomStore({
+                                key: "TicketId",
+                                load: getTickets
+                            }),
                             remoteOperations: false,
                             allowColumnReordering: true,
                             rowAlternationEnabled: true,
@@ -493,7 +506,7 @@
                     },
 
                     showLoadingPage() {
-                        this.showLoading = true;
+                        //this.showLoading = true;
                     },
 
                     hideLoadingPage() {
