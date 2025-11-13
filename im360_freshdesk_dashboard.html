@@ -19,11 +19,6 @@
 
     <body>
         <div id="app" class='datagrid'>
-            <div v-if="showLoading" id="loading">
-                <div id="loading-content">
-                    <img src="im360_Loading.gif" />
-                </div>
-            </div>
             <div title="Click a row to view the ticket's detail tab.">
               <div id="gridContainer"></div>
             </div>
@@ -41,7 +36,6 @@
                 el: '#app',
                 data: {
                     pageTitle: 'ZendeskDashboard',
-                    showLoading: true,
                     freshdeskUrl: '',
                     // default appId value when Configuration FreshdeskAPI -> Value3 is not configured
                     appId: '80ffd75d-69ec-ea11-a817-000d3a8bdb91',
@@ -49,8 +43,7 @@
                     formId: 'c822d616-dce1-4671-a5ac-a9c3cadb5c2d',
                 },
                 async mounted() {
-                    this.showLoadingPage();
-
+                    $("#gridContainer").hide();
                     let freshdeskConfig = await this.getFreshdeskConfig();
                     if (freshdeskConfig) {
                         let baseUrl = freshdeskConfig.im360_value;
@@ -88,29 +81,14 @@
                         }
                         zendeskCountryName = localStorage.getItem('zendesk_country_name');
                         zendeskBCN = localStorage.getItem('zendesk_bcn');
-                        // let loadOptions = {
-                        //     skip: 0,             // how many records to skip (for paging)
-                        //     take: 100,           // how many records to load (page size)
-                        //     sort: [
-                        //         { selector: "im360_ticketid", desc: true }
-                        //     ],
-                        //     filter: [
-                        //         ["im360_created_at", "gt", "1980-01-01"]
-                        //     ],
-                        //     searchExpr: ['im360_ticketid', 'im360_country', 'im360_ingrambcn', 'im360_partneremailaddress', 'im360_resellername', 'im360_name', 'im360_status', 'im360_domain', 'im360_priority'], // which fields to search
-                        //     searchOperation: "contains",
-                        //     searchValue: "john",           // search panel text
-                        //     requireTotalCount: false,       // if grid needs total record count
-                        // };
-                        //let tickets = await this.getTickets(loadOptions);
-                        //console.log(`${this.pageTitle} - tickets: ${JSON.stringify(tickets)}`);
+                        
                         localStorage.setItem('zendesk_country_name', '');
                         localStorage.setItem('zendesk_bcn', '')
                         this.generateDatagrid(this.getTickets); 
                     } else {
                         console.error(`${this.pageTitle} - Zendesk API URL is null`);
                     }
-
+                    $("#gridContainer").show();
                 },
                 methods: {
                     async getFreshdeskConfig() {
@@ -139,7 +117,6 @@
                             },
                             function (error) {
                                 console.error(`${pageTitle} - ${error.message}`);
-                                this.hideLoadingPage();
                                 return null;
                             }
                         );
@@ -174,7 +151,6 @@
                                 },
                                 function (error) {
                                     console.error(`${pageTitle} - ${error.message}`);
-                                    this.hideLoadingPage && this.hideLoadingPage();
                                     return null;
                                 }
                             );
@@ -183,105 +159,8 @@
                         }
                     },
 
-                    // async getTickets (loadOptions) {
-                    //     console.log("loadOptions:", loadOptions);
-                    //     const entityName = "im360_zendesktickets";
-                    //     const pageSize = loadOptions.take || 100;
-                    //     const currentSkip = loadOptions.skip || 0;
-                    //     const requestedPage = Math.floor(currentSkip / pageSize) + 1;
-
-                    //     // Reset cookie if we start over (new filter/search/sort)
-                    //     if (requestedPage < lastPage) {
-                    //         pagingCookie = null;
-                    //         lastPage = 1;
-                    //     }
-
-                    //     // --- FILTERING (filterRow) ---
-                    //     let filterXml = "";
-                    //     if (loadOptions.filter) {
-                    //         filterXml += buildFetchFilterXml(loadOptions.filter);
-                    //     }
-
-                    //     // --- SEARCH PANEL (search across fields) ---
-                    //     if (loadOptions.searchValue && loadOptions.searchExpr) {
-                    //         const searchValue = loadOptions.searchValue;
-                    //         const fields = Array.isArray(loadOptions.searchExpr)
-                    //         ? loadOptions.searchExpr
-                    //         : [loadOptions.searchExpr];
-
-                    //         // Build an OR filter for all search fields
-                    //         filterXml += `<filter type="or">
-                    //         ${fields
-                    //             .map(
-                    //             f =>
-                    //                 `<condition attribute="${f}" operator="like" value="%${searchValue}%" />`
-                    //             )
-                    //             .join("")}
-                    //         </filter>`;
-                    //     }
-
-                    //     // --- SORTING ---
-                    //     let orderXml = "";
-                    //     if (loadOptions.sort && loadOptions.sort.length > 0) {
-                    //         const sort = loadOptions.sort[0];
-                    //         orderXml = `<order attribute="${sort.selector}" descending="${sort.desc}" />`;
-                    //     } else {
-                    //         orderXml = `<order attribute="createdon" descending="true" />`; // default
-                    //     }
-
-                    //     // --- FINAL FetchXML ---
-                    //     const fetchXml = `
-                    //         <fetch count='${pageSize}' page='${requestedPage}'>
-                    //         ${pagingCookie ? pagingCookie : ""}
-                    //         <entity name='${entityName}'>
-                    //             <attribute name='new_customentityid' />
-                    //             <attribute name='new_name' />
-                    //             <attribute name='statuscode' />
-                    //             <attribute name='prioritycode' />
-                    //             <attribute name='createdon' />
-                    //             <filter type='and'>
-                    //             ${filterXml}
-                    //             </filter>
-                    //             ${orderXml}
-                    //         </entity>
-                    //         </fetch>
-                    //     `;
-
-                    //     const encodedFetchXml = "?fetchXml=" + encodeURIComponent(fetchXml);
-
-                    //     try {
-                    //         const result = await Xrm.WebApi.retrieveMultipleRecords(entityName, encodedFetchXml);
-
-                    //         // Save paging-cookie for next batch
-                    //         if (result["@Microsoft.Dynamics.CRM.fetchxmlpagingcookie"]) {
-                    //         pagingCookie = result["@Microsoft.Dynamics.CRM.fetchxmlpagingcookie"];
-                    //         lastPage = requestedPage;
-                    //         } else {
-                    //         pagingCookie = null; // reached end
-                    //         }
-
-                    //         // Map data
-                    //         const items = result.entities.map(e => ({
-                    //         id: e["new_customentityid"],
-                    //         name: e["new_name"],
-                    //         status: e["statuscode@OData.Community.Display.V1.FormattedValue"],
-                    //         priority: e["prioritycode@OData.Community.Display.V1.FormattedValue"],
-                    //         createdon: e["createdon"]
-                    //         }));
-
-                    //         return {
-                    //         data: items,
-                    //         totalCount: requestedPage * pageSize + items.length,
-                    //         };
-                    //     } catch (err) {
-                    //         console.error("FetchXML load error:", err);
-                    //         throw err;
-                    //     }
-                    // },
-                    
                     async getTickets() {
                         let results = [];
-                        //let filter = "<condition attribute='im360_created_at' operator='gt' value='2001-01-01 ' />";
 
                         let countryFilter = `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
                         let partOfCountryFilter = "<condition attribute='im360_country'";
@@ -356,7 +235,6 @@
                             },
                             function (error) {
                                 console.error(`${pageTitle} - ${error.message}`);
-                                this.hideLoadingPage();
                                 return null;
                             }
                         );
@@ -367,6 +245,7 @@
                         let appId = this.appId;
                         let formId = this.formId;
                         let getAccountIdByCountryAndBCN = this.getAccountIdByCountryAndBCN;
+                        let filterColumn = this.filterColumn;
 
                         // dataSource: ticketsArr,
                         $("#gridContainer").dxDataGrid({
@@ -411,62 +290,40 @@
                                         }, 800); // wait 800ms after user stops typing
                                     }
 
+                                    switch (e.fullName) {
+                                        case "columns[0].filterValue":
+                                            finalFilterArr = filterColumn ('Ticket Id', e.value, finalFilterArr);
+                                            break;
+                                            case "columns[1].filterValue":
+                                            finalFilterArr = filterColumn ('Country', e.value, finalFilterArr);
+                                            break;
+                                            case "columns[2].filterValue":
+                                            finalFilterArr = filterColumn ('Ingram BCN#', e.value, finalFilterArr);
+                                            break;
+                                            case "columns[3].filterValue":
+                                            finalFilterArr = filterColumn ('Partner email address', e.value, finalFilterArr);
+                                            break;
+                                            case "columns[4].filterValue":
+                                            finalFilterArr = filterColumn ('Reseller Name', e.value, finalFilterArr);
+                                            break;
+                                            case "columns[5].filterValue":
+                                            finalFilterArr = filterColumn ('Ticket subject line', e.value, finalFilterArr);
+                                            break;
+                                            case "columns[6].filterValue":
+                                            finalFilterArr = filterColumn ('Status', e.value, finalFilterArr);
+                                            break;
+                                            case "columns[7].filterValue":
+                                            finalFilterArr = filterColumn ('Domain', e.value, finalFilterArr);
+                                            break;
+                                            case "columns[8].filterValue":
+                                            finalFilterArr = filterColumn ('Priority', e.value, finalFilterArr);
+                                            break;
+                                    }
+
                                     // // global search:
                                     // if (e.name === "searchPanel" && e.fullName === "searchPanel.text") {
                                     //     console.log("User global search value changed:", e.value);
                                     // }
-                                    
-                                    // (1) search Ticket id:
-                                    if (e.name === "columns" && e.fullName === "columns[0].filterValue") {
-                                        let filter = `<condition attribute='im360_ticketid' operator='eq' value='${e.value}' />`;
-                                        let partOfFilter = "<condition attribute='im360_ticketid'";
-                                        finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfFilter));
-                                        if (e.value) {
-                                            finalFilterArr.push(filter);
-                                        }
-                                        // trigger the data retrieve
-                                        console.log("User column search value changed for Ticket id:", e.value);
-                                    }
-
-                                    // (2) search Country:
-                                    if (e.name === "columns" && e.fullName === "columns[1].filterValue") {
-                                        console.log("User column search value changed for Country:", e.value);
-                                    }
-
-                                    // (3) search Ingram BCN#:
-                                    if (e.name === "columns" && e.fullName === "columns[2].filterValue") {
-                                        console.log("User column search value changed for Ingram BCN#:", e.value);
-                                    }
-
-                                    // (4) search Partner email address:
-                                    if (e.name === "columns" && e.fullName === "columns[3].filterValue") {
-                                        console.log("User column search value changed for Partner email address:", e.value);
-                                    }
-
-                                    // (5) search Reseller Name:
-                                    if (e.name === "columns" && e.fullName === "columns[4].filterValue") {
-                                        console.log("User column search value changed for Reseller Name:", e.value);
-                                    }
-
-                                    // (6) search Ticket subject line:
-                                    if (e.name === "columns" && e.fullName === "columns[5].filterValue") {
-                                        console.log("User column search value changed for Ticket subject line:", e.value);
-                                    }
-
-                                    // (7) search Status:
-                                    if (e.name === "columns" && e.fullName === "columns[6].filterValue") {
-                                        console.log("User column search value changed for Status:", e.value);
-                                    }
-
-                                    // (8) search Domain:
-                                    if (e.name === "columns" && e.fullName === "columns[7].filterValue") {
-                                        console.log("User column search value changed for Domain:", e.value);
-                                    }
-
-                                    // (9) search Priority:
-                                    if (e.name === "columns" && e.fullName === "columns[8].filterValue") {
-                                        console.log("User column search value changed for Priority:", e.value);
-                                    }
                                 }
                             },
                             onRowClick: async function (e) {
@@ -494,30 +351,27 @@
                                         localStorage.setItem('zendesk_ticketId', ticketId);
                                         window.open(fullUrl, '_blank');
                                     } else {
-                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Cannot get Account Id by Country and BCN. Unable to load account details." })
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Cannot get Account Id by Country and BCN. Unable to load account details. [ticket id: ${ticketId}]` })
                                     }
                                 } else {
-                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Country or BCN is not available. Unable to load account details." })
+                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Country or BCN is not available. Unable to load account details. [ticket id: ${ticketId}]` })
                                 }
                                 return null;
                             }
                         });
-                        this.hideLoadingPage();
                     },
 
-                    showLoadingPage() {
-                        //this.showLoading = true;
-                    },
-
-                    hideLoadingPage() {
-                        try {
-                            setTimeout(() => {
-                                this.showLoading = false;
-                            }, 1000);
-                        } catch (ex) {
-                            this.showLoading = false;
+                    filterColumn (searchName, searchValue, filterArr) {
+                        let filter = `<condition attribute='im360_ticketid' operator='eq' value='${searchValue}' />`;
+                        let partOfFilter = "<condition attribute='im360_ticketid'";
+                        filterArr = filterArr.filter(item => !item.includes(partOfFilter));
+                        if (searchValue) {
+                            filterArr.push(filter);
                         }
+                        console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
+                        return filterArr;
                     }
+
                 }
                 
             });
@@ -530,28 +384,6 @@
                 -moz-osx-font-smoothing: grayscale;
                 -webkit-font-smoothing: antialiased;
                 font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, Arial, sans-serif;
-            }
-
-            /* loading image */
-            #loading {
-                width: 100%;
-                height: 100%;
-                top: 0px;
-                left: 0px;
-                position: fixed;
-                display: block;
-                opacity: 0.85;
-                background-color: #fff;
-                z-index: 99;
-                text-align: center;
-            }
-
-            #loading-content {
-                position: absolute;
-                top: 30%;
-                left: 45%;
-                text-align: center;
-                z-index: 100;
             }
 
             .datagrid {
