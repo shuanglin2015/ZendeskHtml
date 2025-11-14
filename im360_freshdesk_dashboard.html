@@ -236,12 +236,12 @@
 
                                     if (results.length == 0 && isTicketIdSearch) {
                                         const ticketId = finalFilterArr[0].toString().split("value='")[1].split("'")[0];
-                                        freshdeskUrl = `${freshdeskUrl}${ticketId}`;
-                                        console.log (`Zendesk URL to get ticket by id: ${freshdeskUrl}`);
+                                        let freshdeskUrlWithTicketId = `${freshdeskUrl}${ticketId}`;
+                                        console.log (`Zendesk URL to get ticket by id: ${freshdeskUrlWithTicketId}`);
 
                                         try {
                                             // get result from Zendesk API
-                                            axios.get(freshdeskUrl)
+                                            return axios.get(freshdeskUrlWithTicketId)
                                                 .then(response => {
                                                     console.log('Data:', response.data);
                                                     let item = response.data && response.data.ticket;
