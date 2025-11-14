@@ -77,8 +77,10 @@
                     if (freshdeskUrl) {
                         console.log(`Zendesk Dashboard - freshdeskUrl: ${freshdeskUrl}`);
 
-                        let stageApi = 'crm-zendesk-api.azurewebsites.net';
-                        if (freshdeskUrl && freshdeskUrl.indexOf(stageApi) > -1) {
+                        let stageApi1 = 'crm-zendesk-api.azurewebsites.net';
+                        let stageApi2 = 'crm-zendesk-api-dev.azurewebsites.net';
+                        let stageApi3 = 'crm-zendesk-api-uat.azurewebsites.net';
+                        if ((freshdeskUrl.indexOf(stageApi1) > -1) || (freshdeskUrl.indexOf(stageApi2) > -1) || (freshdeskUrl.indexOf(stageApi3) > -1)) {
                             isStage = true;
                         } else {
                             isStage = false;
@@ -248,15 +250,29 @@
                                                     // 200 OK
                                                     if (response.status === 200) {
                                                         if (item && item.id && item.subject && Object.keys(item).length > 0) {
+                                                            let countryFieldId = isStage ? 31959436739604 : 35138178531732;
+                                                            const objCountry = item.custom_fields && item.custom_fields.find(item => item.id === countryFieldId);
+                                                            const countryValue = objCountry ? objCountry.value : '';
+
+                                                            let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
+                                                            const objBCN = result.custom_fields && result.custom_fields.find(item => item.id === bcnFieldId);
+                                                            const bcnValue = objBCN ? objBCN.value : '';
+
+                                                            // reseller name: organization_id
+
+                                                            let domainFieldId = isStage ? 31042462931476 : 34698829065236;
+                                                            const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
+                                                            const domainValue = objDomain ? objDomain.value : '';
+
                                                             let itemNew = {
                                                                 'TicketId': item.id,
-                                                                'Country': item.strCountry ? item.strCountry : '-',
-                                                                'Ingram BCN#': item.strBCN ? item.strBCN : '-',
-                                                                'Partner email address': item.requesterEmail ? item.requesterEmail : '-',
-                                                                'Reseller Name': item.requesterName ? item.requesterName : '-',
+                                                                'Country': countryValue ? countryValue : '-',
+                                                                'Ingram BCN#': bcnValue ? bcnValue : '-',
+                                                                'Partner email address': item.requester_id ? item.requester_id : '-',
+                                                                'Reseller Name': item.organization_id ? item.organization_id : '-',
                                                                 'Ticket subject line': item.subject ? item.subject : '-',
                                                                 'Status': item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
-                                                                'Domain': item.strDomain ? item.strDomain : '-',
+                                                                'Domain': domainValue ? domainValue : '-',
                                                                 'Priority': item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-',
                                                             };
 
