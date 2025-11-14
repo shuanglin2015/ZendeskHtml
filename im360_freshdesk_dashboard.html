@@ -418,13 +418,13 @@
                                 let country = data['Country'];
                                 let bcn = data['Ingram BCN#'];
                                 // if (country && accountId != '-') {
+                                let ticketId = data.TicketId;
                                 if (country && country != '-' && bcn && bcn != '-') {
                                     let accountData = await getAccountIdByCountryAndBCN(country, bcn);
                                     /*let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';*/
                                     let accountId = accountData ? accountData.accountid : '-';
                                     console.log(`Zendesk Dashboard - onRowClick -> accountId: ${accountId}`);
 
-                                    let ticketId = data.TicketId;
                                     let url = window.location.protocol + "//" + window.location.host + "/";
                                     let fieldName = 'im360_newnavigationtab';
                                     let tabName = 'tab_freshdesk';    
@@ -446,21 +446,22 @@
                         });
                     },
 
-                    async updateColumnInGridCellForAll (zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
+                    async updateColumnInGridCellForAll (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
+                        let fieldName = 'im360_name';
                         let columnName = "Country";
                         let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                        updateColumnInGridCell(grid, columnName, countryFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                        updateColumnInGridCell(fieldName, grid, columnName, countryFieldId, zendeskBaseUrl, funcCodeForJsonById);
                         // TODO: update other fields
 
 
                     },
 
-                    async updateColumnInGridCell(grid, columnName, fieldId, zendeskBaseUrl, funcCodeForJsonById) {
+                    async updateColumnInGridCell(fieldName, grid, columnName, fieldId, zendeskBaseUrl, funcCodeForJsonById) {
                         let firstRowKey = grid.getKeyByRowIndex(0);
-                        if (!firstRowKey) return; // grid might be empty
+                        if (!firstRowKey) return; // grid might be empty (the ticket id value user typed)
                         let configName = '';
 
-                        let configValue = grid.cellValue(firstRowKey, columnName);
+                        let configValue = grid.cellValue(0, columnName);
                         if (configValue) {
                             const fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                                 <entity name='im360_zendeskconfig'> \
@@ -472,14 +473,11 @@
                                 </entity> \
                                 </fetch>";
 
-                            const response = await WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml);
-                            const result = await response.json();
-                            //const fetchedValue = data.value[0]?[columnName] ?? "No Value";
-
+                            const result = await Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml);
                             if (result != null && result.entities && result.entities.length > 0) {
                                 let zendeskConfig = result.entities[0];
                                 if (zendeskConfig) {
-                                    configName = zendeskConfig[columnName];
+                                    configName = zendeskConfig[fieldName];
                                 }
 
                             } else {
@@ -487,6 +485,7 @@
                                 let jsonId = fieldId;
                                 let jsonPath = 'ticket_fields/';
                                 //let fieldData = await this.getJsonById(this.zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById);
+                                let fieldData = '';
 
                                 try {
                                     const response = await axios.get(`${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`);
@@ -507,8 +506,17 @@
 
                             }
                             if (configName) {
-                                await grid.cellValue(firstRowKey, columnName, configName);
+                                await grid.cellValue(0, columnName, configName);
+
+
+
+
                                 //grid.refresh();
+
+
+
+
+
                             }
                         }
                     },
