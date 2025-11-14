@@ -166,19 +166,31 @@
                     async getTickets() {
                         let results = [];
 
-                        let countryFilter = `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
-                        let partOfCountryFilter = "<condition attribute='im360_country'";
-                        finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
                         if (zendeskCountryName) {
+                            let countryFilter = `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
+                            let partOfCountryFilter = "<condition attribute='im360_country'";
+                            finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
                             finalFilterArr.push(countryFilter);
                         }
 
-                        let bcnFilter = `<condition attribute='im360_ingrambcn' operator='eq' value='${zendeskBCN}' />`;
-                        let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
-                        finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
                         if (zendeskBCN) {
+                            let bcnFilter = `<condition attribute='im360_ingrambcn' operator='eq' value='${zendeskBCN}' />`;
+                            let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
+                            finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
                             finalFilterArr.push(bcnFilter);
                         }
+
+
+
+
+
+
+
+
+
+
+
+                        // let fetchXml = `<fetch> \
 
                         let fetchXml = `<fetch top='15'> \
                                             <entity name='im360_zendesktickets'> \
@@ -225,7 +237,7 @@
                                                     'Priority': item.im360_priority ? item.im360_priority : '-'
                                                 };
 
-                                                console.log(`Zendesk Dashboard - item after adding more fields: ${JSON.stringify(itemNew)}`);
+                                                //console.log(`Zendesk Dashboard - item after adding more fields: ${JSON.stringify(itemNew)}`);
                                                 results.push(itemNew);
                                             }
                                         });
@@ -304,9 +316,10 @@
                         let appId = this.appId;
                         let formId = this.formId;
                         let getAccountIdByCountryAndBCN = this.getAccountIdByCountryAndBCN;
-                        //let filterByFullName = this.filterByFullName;
-                        //let filterColumnForTicketId = this.filterColumnForTicketId;
+                        let filterColumnForTicketId = this.filterColumnForTicketId;
                         let filterColumn = this.filterColumn;
+                        let updateColumnInGridCellForAll = this.updateColumnInGridCellForAll;
+                        let updateColumnInGridCell = this.updateColumnInGridCell;
 
                         // dataSource: ticketsArr,
                         $("#gridContainer").dxDataGrid({
@@ -347,7 +360,7 @@
 
                                 if (ticketSearchFromZendeskAPI) {
                                     ticketSearchFromZendeskAPI = false;
-                                    updateColumnInGridCellForAll(e.component, zendeskBaseUrl, funcCodeForJsonById);
+                                    updateColumnInGridCellForAll(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
                                 }
 
                                 console.log("updateFirstRowCell function completed");
@@ -361,38 +374,33 @@
                                         }, 800); // wait 800ms after user stops typing
                                     }
 
-                                    // const grid = e.component;
-                                    // grid.option("dataSource", []);
-
-                                    //filterByFullName(e.fullName, filterColumnForTicketId, filterColumn);
-
                                     switch (e.fullName) {
                                         case "columns[0].filterValue":
-                                            finalFilterArr = filterColumn ('Ticket Id', e.value, finalFilterArr);
+                                            finalFilterArr = filterColumnForTicketId('Ticket Id', e.value, finalFilterArr);
                                             break;
-                                            case "columns[1].filterValue":
-                                            finalFilterArr = filterColumn ('Country', e.value, finalFilterArr);
+                                        case "columns[1].filterValue":
+                                            finalFilterArr = filterColumn('Country', e.value, finalFilterArr, 'im360_country');
                                             break;
-                                            case "columns[2].filterValue":
-                                            finalFilterArr = filterColumn ('Ingram BCN#', e.value, finalFilterArr);
+                                        case "columns[2].filterValue":
+                                            finalFilterArr = filterColumn('Ingram BCN#', e.value, finalFilterArr, 'im360_ingrambcn');
                                             break;
-                                            case "columns[3].filterValue":
-                                            finalFilterArr = filterColumn ('Partner email address', e.value, finalFilterArr);
+                                        case "columns[3].filterValue":
+                                            finalFilterArr = filterColumn('Partner email address', e.value, finalFilterArr, 'im360_partneremailaddress');
                                             break;
-                                            case "columns[4].filterValue":
-                                            finalFilterArr = filterColumn ('Reseller Name', e.value, finalFilterArr);
+                                        case "columns[4].filterValue":
+                                            finalFilterArr = filterColumn('Reseller Name', e.value, finalFilterArr, 'im360_resellername');
                                             break;
-                                            case "columns[5].filterValue":
-                                            finalFilterArr = filterColumn ('Ticket subject line', e.value, finalFilterArr);
+                                        case "columns[5].filterValue":
+                                            finalFilterArr = filterColumn('Ticket subject line', e.value, finalFilterArr, 'im360_name');
                                             break;
-                                            case "columns[6].filterValue":
-                                            finalFilterArr = filterColumn ('Status', e.value, finalFilterArr);
+                                        case "columns[6].filterValue":
+                                            finalFilterArr = filterColumn('Status', e.value, finalFilterArr, 'im360_status');
                                             break;
-                                            case "columns[7].filterValue":
-                                            finalFilterArr = filterColumn ('Domain', e.value, finalFilterArr);
+                                        case "columns[7].filterValue":
+                                            finalFilterArr = filterColumn('Domain', e.value, finalFilterArr, 'im360_domain');
                                             break;
-                                            case "columns[8].filterValue":
-                                            finalFilterArr = filterColumn ('Priority', e.value, finalFilterArr);
+                                        case "columns[8].filterValue":
+                                            finalFilterArr = filterColumn('Priority', e.value, finalFilterArr, 'im360_priority');
                                             break;
                                     }
 
@@ -438,7 +446,7 @@
                         });
                     },
 
-                    async updateColumnInGridCellForAll (zendeskBaseUrl, funcCodeForJsonById) {
+                    async updateColumnInGridCellForAll (zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
                         let columnName = "Country";
                         let countryFieldId = isStage ? 31959436739604 : 35138178531732;
                         updateColumnInGridCell(grid, columnName, countryFieldId, zendeskBaseUrl, funcCodeForJsonById);
@@ -505,9 +513,9 @@
                         }
                     },
 
-                    filterColumn (searchName, searchValue, filterArr) {
-                        let filter = `<condition attribute='im360_ticketid' operator='eq' value='${searchValue}' />`;
-                        let partOfFilter = "<condition attribute='im360_ticketid'";
+                    filterColumn (searchName, searchValue, filterArr, fieldName) {
+                        let filter = `<condition attribute='${fieldName}' operator='like' value='%${searchValue}%' />`;
+                        let partOfFilter = `<condition attribute='${fieldName}'`;
                         filterArr = filterArr.filter(item => !item.includes(partOfFilter));
                         if (searchValue) {
                             filterArr.push(filter);
@@ -516,61 +524,16 @@
                         return filterArr;
                     },
 
-                    // async filterByFullName (fullName, filterColumnForTicketId, filterColumn) {
-                    //     switch (fullName) {
-                    //         case "columns[0].filterValue":
-                    //             finalFilterArr = await filterColumnForTicketId (e.value, finalFilterArr);
-                    //             break;
-                    //             case "columns[1].filterValue":
-                    //             finalFilterArr = filterColumn ('Country', e.value, finalFilterArr);
-                    //             break;
-                    //             case "columns[2].filterValue":
-                    //             finalFilterArr = filterColumn ('Ingram BCN#', e.value, finalFilterArr);
-                    //             break;
-                    //             case "columns[3].filterValue":
-                    //             finalFilterArr = filterColumn ('Partner email address', e.value, finalFilterArr);
-                    //             break;
-                    //             case "columns[4].filterValue":
-                    //             finalFilterArr = filterColumn ('Reseller Name', e.value, finalFilterArr);
-                    //             break;
-                    //             case "columns[5].filterValue":
-                    //             finalFilterArr = filterColumn ('Ticket subject line', e.value, finalFilterArr);
-                    //             break;
-                    //             case "columns[6].filterValue":
-                    //             finalFilterArr = filterColumn ('Status', e.value, finalFilterArr);
-                    //             break;
-                    //             case "columns[7].filterValue":
-                    //             finalFilterArr = filterColumn ('Domain', e.value, finalFilterArr);
-                    //             break;
-                    //             case "columns[8].filterValue":
-                    //             finalFilterArr = filterColumn ('Priority', e.value, finalFilterArr);
-                    //             break;
-                    //     }
-                    // },
-
-                    // async filterColumnForTicketId (searchValue, filterArr) {
-                    //     let searchName = 'Ticket Id'
-                    //     let filter = `<condition attribute='im360_ticketid' operator='eq' value='${searchValue}' />`;
-                    //     let partOfFilter = "<condition attribute='im360_ticketid'";
-                    //     filterArr = filterArr.filter(item => !item.includes(partOfFilter));
-                    //     if (searchValue) {
-                    //         filterArr.push(filter);
-                    //     }
-                    //     console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
-                    //     return filterArr;
-                    // },
-
-                    // async filterColumn (searchName, fieldName, searchValue, filterArr) {
-                    //     let filter = `<condition attribute='${fieldName}' operator='like' value='%${searchValue}%' />`;
-                    //     let partOfFilter = `<condition attribute='${fieldName}'`;
-                    //     filterArr = filterArr.filter(item => !item.includes(partOfFilter));
-                    //     if (searchValue) {
-                    //         filterArr.push(filter);
-                    //     }
-                    //     console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
-                    //     return filterArr;
-                    // }
-
+                    filterColumnForTicketId (searchName, searchValue, filterArr) {
+                        let filter = `<condition attribute='im360_ticketid' operator='eq' value='${searchValue}' />`;
+                        let partOfFilter = "<condition attribute='im360_ticketid'";
+                        filterArr = filterArr.filter(item => !item.includes(partOfFilter));
+                        if (searchValue) {
+                            filterArr.push(filter);
+                        }
+                        console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
+                        return filterArr;
+                    }
                 }
                 
             });
