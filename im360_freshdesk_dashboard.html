@@ -27,15 +27,16 @@
         <script>
             let isStage = true;
             let zendeskBaseUrl = '';
+            let freshdeskUrl = '';
             let funcCodeForJsonById = '';
             let finalFilterArr = ["<condition attribute='im360_created_at' operator='gt' value='1989-01-01 ' />"];
             let zendeskCountryName = '';
             let zendeskBCN = '';
+            let ticketSearchFromZendeskAPI = '';
 
             let app = new Vue({
                 el: '#app',
                 data: {
-                    pageTitle: 'ZendeskDashboard',
                     freshdeskUrl: '',
                     // default appId value when Configuration FreshdeskAPI -> Value3 is not configured
                     appId: '80ffd75d-69ec-ea11-a817-000d3a8bdb91',
@@ -47,34 +48,37 @@
                     let freshdeskConfig = await this.getFreshdeskConfig();
                     if (freshdeskConfig) {
                         let baseUrl = freshdeskConfig.im360_value;
-                        this.zendeskBaseUrl = baseUrl;
-                        console.log(`${this.pageTitle} - zendeskBaseUrl from FreshdeskAPI configuration: ${this.zendeskBaseUrl}`);
+                        zendeskBaseUrl = baseUrl;
+                        console.log(`Zendesk Dashboard - zendeskBaseUrl from FreshdeskAPI configuration: ${zendeskBaseUrl}`);
                         let funcCode = freshdeskConfig.im360_value2;
                         let funcCodeArr = funcCode.toString().split(';;;;');
-                        let firstFuncCode = funcCodeArr[2];
-                        this.freshdeskUrl = `${baseUrl}/searchByResellerId?code=${firstFuncCode}&resellerId=`;
+                        let firstFuncCode = funcCodeArr[0];
+                        let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
+                        let userName = userSettings && userSettings.userName;
+                        freshdeskUrl = `${zendeskBaseUrl}/getDataById?code=${firstFuncCode}&category=tickets&userName=${userName}&itemId=`;
+                        console.log(freshdeskUrl);
                         this.funcCodeForJsonById = funcCodeArr[3];
 
                         let im360_value3 = freshdeskConfig.im360_value3;
                         if (im360_value3) {
                             this.appId = im360_value3;
-                            console.log(`${this.pageTitle} - appId from FreshdeskAPI configuration: ${this.appId}`);
+                            console.log(`Zendesk Dashboard - appId from FreshdeskAPI configuration: ${this.appId}`);
                         }
 
                         let im360_value4 = freshdeskConfig.im360_value4;
                         if (im360_value4) {
                             this.formId = im360_value4;
-                            console.log(`${this.pageTitle} - formId from FreshdeskAPI configuration: ${this.formId}`);
+                            console.log(`Zendesk Dashboard - formId from FreshdeskAPI configuration: ${this.formId}`);
                         }
                     } else {
-                        console.error(`${this.pageTitle} - freshdeskConfig is null`);
+                        console.error(`Zendesk Dashboard - freshdeskConfig is null`);
                     }
 
-                    if (this.freshdeskUrl) {
-                        console.log(`${this.pageTitle} - freshdeskUrl: ${this.freshdeskUrl}`);
+                    if (freshdeskUrl) {
+                        console.log(`Zendesk Dashboard - freshdeskUrl: ${freshdeskUrl}`);
 
                         let stageApi = 'crm-zendesk-api.azurewebsites.net';
-                        if (this.freshdeskUrl && this.freshdeskUrl.indexOf(stageApi) > -1) {
+                        if (freshdeskUrl && freshdeskUrl.indexOf(stageApi) > -1) {
                             isStage = true;
                         } else {
                             isStage = false;
@@ -86,7 +90,7 @@
                         localStorage.setItem('zendesk_bcn', '')
                         this.generateDatagrid(this.getTickets); 
                     } else {
-                        console.error(`${this.pageTitle} - Zendesk API URL is null`);
+                        console.error(`Zendesk Dashboard - Zendesk API URL is null`);
                     }
                     $("#gridContainer").show();
                 },
@@ -105,18 +109,17 @@
                          </entity> \
                          </fetch>";
 
-                        let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_configuration", "?fetchXml=" + fetchXml).then(
                             function success(result) {
                                 if (result != null) {
                                     return result.entities[0];
                                 } else {
-                                    console.error(`${pageTitle} - Cannot get Zendesk configuration.`);
+                                    console.error(`Zendesk Dashboard - Cannot get Zendesk configuration.`);
                                     return null;
                                 }
                             },
                             function (error) {
-                                console.error(`${pageTitle} - ${error.message}`);
+                                console.error(`Zendesk Dashboard - ${error.message}`);
                                 return null;
                             }
                         );
@@ -139,18 +142,17 @@
                                 </entity> \
                                 </fetch>";
 
-                            let pageTitle = this.pageTitle;
                             return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
                                 function success(result) {
                                     if (result != null) {
                                         return result.entities[0];
                                     } else {
-                                        console.error(`${pageTitle} - Cannot get Account by Country and BCN.`);
+                                        console.error(`Zendesk Dashboard - Cannot get Account by Country and BCN.`);
                                         return null;
                                     }
                                 },
                                 function (error) {
-                                    console.error(`${pageTitle} - ${error.message}`);
+                                    console.error(`Zendesk Dashboard - ${error.message}`);
                                     return null;
                                 }
                             );
@@ -202,7 +204,6 @@
                                             </entity> \
                                         </fetch>`;
 
-                        let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_zendesktickets", "?fetchXml=" + fetchXml).then(
                             function success(result) {
                                 if (result != null) {
@@ -222,26 +223,68 @@
                                                     'Priority': item.im360_priority ? item.im360_priority : '-'
                                                 };
 
-                                                console.log(`${pageTitle} - item after adding more fields: ${JSON.stringify(itemNew)}`);
+                                                console.log(`Zendesk Dashboard - item after adding more fields: ${JSON.stringify(itemNew)}`);
                                                 results.push(itemNew);
                                             }
                                         });
                                     }
+
+                                    // <condition attribute='im360_ticketid' operator='eq' value='39744' />
+                                    let partOfTicketFilter = "<condition attribute='im360_ticketid'";
+                                    finalFilterArr = finalFilterArr.filter(item => item.includes(partOfTicketFilter));
+                                    let isTicketIdSearch = finalFilterArr.length > 0;
+
+                                    if (results.length == 0 && isTicketIdSearch) {
+                                        const ticketId = finalFilterArr[0].toString().split("value='")[1].split("'")[0];
+                                        freshdeskUrl = `${freshdeskUrl}${ticketId}`;
+                                        console.log (`Zendesk URL to get ticket by id: ${freshdeskUrl}`);
+
+                                        try {
+                                            // get result from Zendesk API
+                                            axios.get(freshdeskUrl)
+                                                .then(response => {
+                                                    console.log('Data:', response.data);
+                                                    let item = response.data && response.data.ticket;
+                                                    // 200 OK
+                                                    if (response.status === 200) {
+                                                        if (item && item.id && item.subject && Object.keys(item).length > 0) {
+                                                            let itemNew = {
+                                                                'TicketId': item.id,
+                                                                'Country': item.strCountry ? item.strCountry : '-',
+                                                                'Ingram BCN#': item.strBCN ? item.strBCN : '-',
+                                                                'Partner email address': item.requesterEmail ? item.requesterEmail : '-',
+                                                                'Reseller Name': item.requesterName ? item.requesterName : '-',
+                                                                'Ticket subject line': item.subject ? item.subject : '-',
+                                                                'Status': item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
+                                                                'Domain': item.strDomain ? item.strDomain : '-',
+                                                                'Priority': item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-',
+                                                            };
+
+                                                            console.log(`ticket retrieved from Zendesk API: ${JSON.stringify(itemNew)}`);
+                                                            results.push(itemNew);
+                                                            ticketSearchFromZendeskAPI = true;
+                                                            return results;
+                                                        }
+                                                    }
+                                                })
+                                                .catch(error => {
+                                                    console.error('Error:', error);
+                                                });
+                                        } catch (err) {
+                                            console.error(`Exception occurred during the Zendesk API call: ${err && err.message}`);
+                                        } 
+                                    }
                                     return results;
-                                } else {
-                                    console.error(`${pageTitle} - Cannot get Zendesk tickets.`);
-                                    return null;
                                 }
                             },
                             function (error) {
-                                console.error(`${pageTitle} - ${error.message}`);
+                                console.error(`Zendesk Dashboard Error - ${error.message}`);
                                 return null;
                             }
                         );
                     },
 
                     generateDatagrid(getTickets) {
-                        let pageTitle = this.pageTitle;
                         let appId = this.appId;
                         let formId = this.formId;
                         let getAccountIdByCountryAndBCN = this.getAccountIdByCountryAndBCN;
@@ -328,7 +371,7 @@
                             },
                             onRowClick: async function (e) {
                                 let data = e.data; // selectedItems.selectedRowsData[0];
-                                console.log(`${pageTitle} - onRowClick -> data: ${JSON.stringify(data)}`);
+                                console.log(`Zendesk Dashboard - onRowClick -> data: ${JSON.stringify(data)}`);
                                 
                                 let country = data['Country'];
                                 let bcn = data['Ingram BCN#'];
@@ -337,7 +380,7 @@
                                     let accountData = await getAccountIdByCountryAndBCN(country, bcn);
                                     /*let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';*/
                                     let accountId = accountData ? accountData.accountid : '-';
-                                    console.log(`${pageTitle} - onRowClick -> accountId: ${accountId}`);
+                                    console.log(`Zendesk Dashboard - onRowClick -> accountId: ${accountId}`);
 
                                     let ticketId = data.TicketId;
                                     let url = window.location.protocol + "//" + window.location.host + "/";
@@ -347,7 +390,7 @@
 
                                     if (accountId && accountId != '-') {
                                         let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
-                                        console.log(`${pageTitle} - fullUrl: ${fullUrl}`);
+                                        console.log(`Zendesk Dashboard - fullUrl: ${fullUrl}`);
                                         localStorage.setItem('zendesk_ticketId', ticketId);
                                         window.open(fullUrl, '_blank');
                                     } else {
