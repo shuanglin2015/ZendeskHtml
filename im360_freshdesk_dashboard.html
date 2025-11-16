@@ -207,98 +207,94 @@
                                         </entity> \
                                     </fetch>`;
 
-                        return Xrm.WebApi.retrieveMultipleRecords("im360_zendesktickets", "?fetchXml=" + fetchXml).then(
-                            function success(result) {
-                                if (result != null) {
-                                    let items = result.entities;
-                                    if (items && items.length > 0) {
-                                        items.forEach(item => {
-                                            if (item && item.im360_name) {
-                                                let itemNew = {
-                                                    'TicketId': item.im360_ticketid,
-                                                    'Country': item.im360_country ? item.im360_country : '-',
-                                                    'Ingram BCN#': item.im360_ingrambcn ? item.im360_ingrambcn : '-',
-                                                    'Partner email address': item.im360_partneremailaddress ? item.im360_partneremailaddress : '-',
-                                                    'Reseller Name': item.im360_resellername ? item.im360_resellername : '-',
-                                                    'Ticket subject line': item.im360_name ? item.im360_name : '-',
-                                                    'Status': item.im360_status ? item.im360_status : '-',
-                                                    'Domain': item.im360_domain ? item.im360_domain : '-',
-                                                    'Priority': item.im360_priority ? item.im360_priority : '-'
-                                                };
+                        try {
 
-                                                //console.log(`Zendesk Dashboard - item after adding more fields: ${JSON.stringify(itemNew)}`);
-                                                results.push(itemNew);
-                                            }
-                                        });
-                                    }
+                            const result = await Xrm.WebApi.retrieveMultipleRecords("im360_zendesktickets", "?fetchXml=" + fetchXml);
 
-                                    // <condition attribute='im360_ticketid' operator='eq' value='39744' />
-                                    let partOfTicketFilter = "<condition attribute='im360_ticketid'";
-                                    finalFilterArr = finalFilterArr.filter(item => item.includes(partOfTicketFilter));
-                                    let isTicketIdSearch = finalFilterArr.length > 0;
+                            if (result != null) {
+                                let items = result.entities;
+                                if (items && items.length > 0) {
+                                    items.forEach(item => {
+                                        if (item && item.im360_name) {
+                                            let itemNew = {
+                                                'TicketId': item.im360_ticketid,
+                                                'Country': item.im360_country ? item.im360_country : '-',
+                                                'Ingram BCN#': item.im360_ingrambcn ? item.im360_ingrambcn : '-',
+                                                'Partner email address': item.im360_partneremailaddress ? item.im360_partneremailaddress : '-',
+                                                'Reseller Name': item.im360_resellername ? item.im360_resellername : '-',
+                                                'Ticket subject line': item.im360_name ? item.im360_name : '-',
+                                                'Status': item.im360_status ? item.im360_status : '-',
+                                                'Domain': item.im360_domain ? item.im360_domain : '-',
+                                                'Priority': item.im360_priority ? item.im360_priority : '-'
+                                            };
 
-                                    if (results.length == 0 && isTicketIdSearch) {
-                                        ticketSearchFromZendeskAPI = true;
-                                        const ticketId = finalFilterArr[0].toString().split("value='")[1].split("'")[0];
-                                        let freshdeskUrlWithTicketId = `${freshdeskUrl}${ticketId}`;
-                                        console.log (`Zendesk URL to get ticket by id: ${freshdeskUrlWithTicketId}`);
-
-                                        try {
-                                            // get result from Zendesk API
-                                            return axios.get(freshdeskUrlWithTicketId)
-                                                .then(response => {
-                                                    console.log('Data:', response.data);
-                                                    let item = response.data && response.data.ticket;
-                                                    // 200 OK
-                                                    if (response.status === 200) {
-                                                        if (item && item.id && item.subject && Object.keys(item).length > 0) {
-                                                            let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                                                            const objCountry = item.custom_fields && item.custom_fields.find(item => item.id === countryFieldId);
-                                                            const countryValue = objCountry ? objCountry.value : '';
-
-                                                            let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
-                                                            const objBCN = result.custom_fields && result.custom_fields.find(item => item.id === bcnFieldId);
-                                                            const bcnValue = objBCN ? objBCN.value : '';
-
-                                                            // reseller name: organization_id
-
-                                                            let domainFieldId = isStage ? 31042462931476 : 34698829065236;
-                                                            const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
-                                                            const domainValue = objDomain ? objDomain.value : '';
-
-                                                            let itemNew = {
-                                                                'TicketId': item.id,
-                                                                'Country': countryValue ? countryValue : '-',
-                                                                'Ingram BCN#': bcnValue ? bcnValue : '-',
-                                                                'Partner email address': item.requester_id ? item.requester_id : '-',
-                                                                'Reseller Name': item.organization_id ? item.organization_id : '-',
-                                                                'Ticket subject line': item.subject ? item.subject : '-',
-                                                                'Status': item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
-                                                                'Domain': domainValue ? domainValue : '-',
-                                                                'Priority': item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-',
-                                                            };
-
-                                                            console.log(`ticket retrieved from Zendesk API: ${JSON.stringify(itemNew)}`);
-                                                            results.push(itemNew);
-                                                            return results;
-                                                        }
-                                                    }
-                                                })
-                                                .catch(error => {
-                                                    console.error('Error:', error);
-                                                });
-                                        } catch (err) {
-                                            console.error(`Exception occurred during the Zendesk API call: ${err && err.message}`);
-                                        } 
-                                    }
-                                    return results;
+                                            //console.log(`Zendesk Dashboard - item after adding more fields: ${JSON.stringify(itemNew)}`);
+                                            results.push(itemNew);
+                                        }
+                                    });
                                 }
-                            },
-                            function (error) {
-                                console.error(`Zendesk Dashboard Error - ${error.message}`);
-                                return null;
+                                // return results;
                             }
-                        );
+                        } catch (err) {
+                            console.error("CustomStore load error:", err);
+                            throw "Data loading error";
+                        }
+
+                        // <condition attribute='im360_ticketid' operator='eq' value='39744' />
+                        let partOfTicketFilter = "<condition attribute='im360_ticketid'";
+                        finalFilterArr = finalFilterArr.filter(item => item.includes(partOfTicketFilter));
+                        let isTicketIdSearch = finalFilterArr.length > 0;
+
+                        if (results.length == 0 && isTicketIdSearch) {
+                            ticketSearchFromZendeskAPI = true;
+                            const ticketId = finalFilterArr[0].toString().split("value='")[1].split("'")[0];
+                            let freshdeskUrlWithTicketId = `${freshdeskUrl}${ticketId}`;
+                            console.log (`Zendesk URL to get ticket by id: ${freshdeskUrlWithTicketId}`);
+
+                            try {
+                                // get result from Zendesk API
+                                const apiResponse = await axios.get(freshdeskUrlWithTicketId);
+                                console.log('apiResponse.data:', apiResponse.data);
+                                let item = apiResponse.data && apiResponse.data.ticket;
+                                // 200 OK
+                                if (apiResponse.status === 200) {
+                                    if (item && item.id && item.subject && Object.keys(item).length > 0) {
+                                        let countryFieldId = isStage ? 31959436739604 : 35138178531732;
+                                        const objCountry = item.custom_fields && item.custom_fields.find(item => item.id === countryFieldId);
+                                        const countryValue = objCountry ? objCountry.value : '';
+
+                                        let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
+                                        const objBCN = item.custom_fields && item.custom_fields.find(item => item.id === bcnFieldId);
+                                        const bcnValue = objBCN ? objBCN.value : '';
+
+                                        // reseller name: organization_id
+
+                                        let domainFieldId = isStage ? 31042462931476 : 34698829065236;
+                                        const objDomain = item.custom_fields && item.custom_fields.find(item => item.id === domainFieldId);
+                                        const domainValue = objDomain ? objDomain.value : '';
+
+                                        let itemNew = {
+                                            'TicketId': item.id,
+                                            'Country': countryValue ? countryValue : '-',
+                                            'Ingram BCN#': bcnValue ? bcnValue : '-',
+                                            'Partner email address': item.requester_id ? item.requester_id : '-',
+                                            'Reseller Name': item.organization_id ? item.organization_id : '-',
+                                            'Ticket subject line': item.subject ? item.subject : '-',
+                                            'Status': item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
+                                            'Domain': domainValue ? domainValue : '-',
+                                            'Priority': item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-',
+                                        };
+
+                                        console.log(`ticket retrieved from Zendesk API: ${JSON.stringify(itemNew)}`);
+                                        results.push(itemNew);
+                                    }
+                                }
+                            } catch (err) {
+                                console.error(`Exception occurred during the Zendesk API call: ${err && err.message}`);
+                            } 
+                        }
+
+                        return results;
                     },
 
                     generateDatagrid(getTickets) {
