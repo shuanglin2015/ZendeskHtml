@@ -56,7 +56,7 @@
                    <table v-if="record && record.custom_fields" aria-describedby="ticketDetails" class="details">
                         <tr>
                             <th id="1">Agent</th>
-                            <th id="2">Ingram BCN#</th>
+                            <th id="2" class="min-col-bcn">Ingram BCN#</th>
                             <th id="3">Customer ID</th>
                             <th id="4">Subscription ID</th>
                             <th id="5">Domain</th>
@@ -299,8 +299,7 @@
 
                 let selectedTicketId = localStorage.getItem('zendesk_ticketId');
                 console.log(`${this.pageTitle} - selectedTicketId from localStorage: ${selectedTicketId}`);
-                localStorage.setItem('zendesk_ticketId', '');
-
+                
                 if (zendesk_ticketIdParam) {
                     selectedTicketId = zendesk_ticketIdParam;
                 }
@@ -313,17 +312,38 @@
                         this.selectOptions = selectOptions;
                         this.items = items;
                         let ticketId = getTicketId(selected);
-                        this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
-                            this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey,this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
-                        let id = this.record['id'];
-                        let subjectGet = this.record['subject'];
-                        this.selectedIdAndSubject = `${id}.${subjectGet}`;
-                        if (items && items.length > 0) {
-                            this.ticketSummary = this.getTicketSummary(items);
-                            if (this.ticketSummary.length > 0) {
-                                this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
+
+                        // if the ticket is not synced from Zendesk to IM360, need to retrieve it from Zendesk:
+                        if (selectedTicketId && ticketId != selectedTicketId) {
+                            console.log(`Zendesk - ticket id from IM360 is: ${ticketId}, but the ticket id from localStorage is: ${selectedTicketId}`);
+                            this.showLoadingPage && this.showLoadingPage();
+                            this.selectedIdAndSubject = selectedTicketId;
+                            let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
+                            let userName = userSettings && userSettings.userName;
+                            let ticket = await this.getTicket(this.zendeskBaseUrl, this.funcCode, selectedTicketId, userName, this.showLoadingPage, this.hideLoadingPage, 
+                                this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
+
+                            this.record = ticket;
+                            let idAndSubject = `${ticketId}.${ticket.subject}`;
+                            if (!this.selectOptions.includes(idAndSubject)) {
+                                this.selectOptions.unshift(idAndSubject);  // add ticketId and subject as the first item of the array
                             }
-                        }
+                            this.hideLoadingPage && this.hideLoadingPage();
+                            // don't need to "check if the ticket id belong to this reseller"
+
+                        } else {
+                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
+                                this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey,this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
+                            }
+                            let id = this.record['id'];
+                            let subjectGet = this.record['subject'];
+                            this.selectedIdAndSubject = `${id}.${subjectGet}`;
+                            if (items && items.length > 0) {
+                                this.ticketSummary = this.getTicketSummary(items);
+                                if (this.ticketSummary.length > 0) {
+                                    this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
+                                }
+                            }
                     }
                 } else {
                     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -359,6 +379,8 @@
                     }
                 }
 
+                localStorage.setItem('zendesk_ticketId', '');   // TODO: confirm if we can put this line here
+
             },
             methods: {
                 async getZendeskConfig() {
@@ -382,7 +404,7 @@
                             if (result != null) {
                                 return result.entities[0];
                             } else {
-                                console.error(`${pageTitle} - Cannot get Zendesk configuration.`);
+                                console.error(`${pageTitle} - Cannot get Zendesk configuration, the fetchXml is: ${fetchXml}`);
                                 return null;
                             }
                         },
@@ -415,7 +437,7 @@
                                 if (result != null) {
                                     return result.entities[0];
                                 } else {
-                                    console.error(`${pageTitle} - Cannot get Account BCN.`);
+                                    console.error(`${pageTitle} - Cannot get Account BCN, the fetchXml is: ${fetchXml}`);
                                     return null;
                                 }
                             },
@@ -456,7 +478,7 @@
                                     }
 
                                 } else {
-                                    console.error(`${pageTitle} - Cannot get Zendesk Config User Name by Key.`);
+                                    console.log(`${pageTitle} - Cannot get Zendesk Config User Name by Key, will get it from Zendesk API, the fetchXml is: ${fetchXml}`);
                                     configName = null;
                                 }
                                 return configName;
@@ -498,7 +520,7 @@
                                     }
 
                                 } else {
-                                    console.error(`${pageTitle} - Cannot get Zendesk Config User Role by Key.`);
+                                    console.log(`${pageTitle} - Cannot get Zendesk Config User Role by Key, will get it from Zendesk API, the fetchXml is: ${fetchXml}`);
                                     configValue = null;
                                 }
                                 return configValue;
@@ -540,7 +562,7 @@
                                     }
 
                                 } else {
-                                    console.error(`${pageTitle} - Cannot get Zendesk Config User Email by Key.`);
+                                    console.log(`${pageTitle} - Cannot get Zendesk Config User Email by Key, will get it from Zendesk API, the fetchXml is: ${fetchXml}`);
                                     configName = null;
                                 }
                                 return configName;
@@ -582,7 +604,7 @@
                                     }
 
                                 } else {
-                                    console.error(`${pageTitle} - Cannot get Zendesk Config Name by Value.`);
+                                    console.log(`${pageTitle} - Cannot get Zendesk Config Name by Value, will get it from Zendesk API, the fetchXml is: ${fetchXml}`);
                                     configName = null;
                                 }
                                 return configName;
@@ -636,7 +658,10 @@
                                             <attribute name='im360_updated_at' /> \
                                                 <filter type='and'> \
                                                     <condition attribute='im360_country' operator='eq' value='${zendesk_country}' /> \
-                                                    <condition attribute='im360_ingrambcn' operator='eq' value='${zendesk_bcn}' /> \
+                                                    <condition attribute='im360_ingrambcn' operator='like' value='%${zendesk_bcn}%' /> \
+                                                    <condition attribute='im360_domain' operator='ne' value='Sales Esc (Legacy)' /> \
+                                                    <condition attribute='im360_domain' operator='ne' value='Sales Esc�(Legacy)' /> \
+                                                    <condition attribute='im360_domain' operator='ne' value='MS Escalations (Legacy)' /> \
                                                 </filter> \
                                             <order descending='true' attribute='im360_created_at' /> \
                                         </entity> \
@@ -676,7 +701,7 @@
                                     }
                                 }
                             } else {
-                                console.error(`${pageTitle} - Cannot get Zendesk tickets.`);
+                                console.error(`${pageTitle} - Cannot get Zendesk tickets, the fetchXml is: ${fetchXml}`);
                                 return null;
                             }
 
@@ -707,7 +732,11 @@
                         let fullUrl = `${url}/main.aspx?appid=${this.appId}&pagetype=dashboard&id=${this.dashboardId}&type=system`;
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
                         localStorage.setItem('zendesk_country_name', zendesk_country);
-                        localStorage.setItem('zendesk_bcn', strBCN ? strBCN : this.strBCN);
+                        let bcn = strBCN ? strBCN : this.strBCN;
+                        if (bcn && bcn.indexOf('|') > 0) {
+                            bcn = bcn.split("|")[1].trim();
+                        }
+                        localStorage.setItem('zendesk_bcn', bcn);
                         this.hideLoadingPage && this.hideLoadingPage();
 
                         if (this.record) {
@@ -745,6 +774,7 @@
                         if (!isNaN(inputValue)) {
                             // retrieveTicket();
                             let ticketId = inputValue;
+                            console.log(`Zendesk - you typed ticket id: ${ticketId} and hit Enter`);
                             
                             this.showLoadingPage && this.showLoadingPage();
                             this.selectedIdAndSubject = ticketId;
@@ -757,6 +787,9 @@
                             let ticketCountry = ticket && ticket.strCountry && ticket.strCountry.toLowerCase().trim();
                             let resellerCountry = originalResellerCountry && originalResellerCountry.toLowerCase().trim();
                             let ticketBCN = ticket && ticket.strBCN && ticket.strBCN;
+                            if (ticketBCN && ticketBCN.indexOf('|') > 0) {
+                                ticketBCN = ticketBCN.split("|")[1].trim();
+                            }
                             let resellerBCN = originalResellerBCN;
                             let belongToReseller = ((ticketCountry == resellerCountry) && (ticketBCN == resellerBCN));
                             if (belongToReseller && ticketCountry != '-' && ticketBCN != '-') {
@@ -765,6 +798,9 @@
                                 if (!this.selectOptions.includes(idAndSubject)) {
                                     this.selectOptions.unshift(idAndSubject);  // add ticketId and subject as the first item of the array
                                 }
+                                //this.$refs.mySelect.toggle(false);
+                                // this.$refs.mySelect.closeDropdown();
+                                this.$refs.mySelect.$refs.search.blur();
                                 this.hideLoadingPage && this.hideLoadingPage();
                             } else {
                                 let msg = "The ticket ID you searched for does not belong to the current reseller. Please search under the correct reseller account or use the Support Tickets dashboard to locate it.";
@@ -1372,6 +1408,10 @@
             margin: 0 0.5rem;
             width: 1rem;
             text-align: center;
+        }
+
+        .min-col-bcn {
+            min-width: 150px;
         }
     </style>
 

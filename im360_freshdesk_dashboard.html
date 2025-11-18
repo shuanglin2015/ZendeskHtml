@@ -87,10 +87,15 @@
                         }
                         zendeskCountryName = localStorage.getItem('zendesk_country_name');
                         zendeskBCN = localStorage.getItem('zendesk_bcn');
+
+                        if (zendeskBCN && zendeskBCN.indexOf('|') > 0) {
+                            zendeskBCN = zendeskBCN.split("|")[1].trim();
+                        }
                         
+                        this.generateDatagrid(this.getTickets);
+
                         localStorage.setItem('zendesk_country_name', '');
                         localStorage.setItem('zendesk_bcn', '')
-                        this.generateDatagrid(this.getTickets); 
                     } else {
                         console.error(`Zendesk Dashboard - Zendesk API URL is null`);
                     }
@@ -128,6 +133,9 @@
                     },
 
                     async getAccountIdByCountryAndBCN(country, bcn) {
+                        if (bcn && bcn.indexOf('|') > 0) {
+                            bcn = bcn.split("|")[1].trim();
+                        }
                         if (country && bcn) {
                             let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                                 <entity name='account'> \
@@ -169,13 +177,15 @@
                         if (zendeskCountryName) {
                             let countryFilter = `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
                             let partOfCountryFilter = "<condition attribute='im360_country'";
+                            // remove the element that contains the value stored in partOfCountryFilter:
                             finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
                             finalFilterArr.push(countryFilter);
                         }
 
                         if (zendeskBCN) {
-                            let bcnFilter = `<condition attribute='im360_ingrambcn' operator='eq' value='${zendeskBCN}' />`;
+                            let bcnFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${zendeskBCN}%' />`;
                             let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
+                            // remove the element that contains the value stored in partOfBcnFilter:
                             finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
                             finalFilterArr.push(bcnFilter);
                         }
@@ -197,12 +207,16 @@
                                             <attribute name='im360_status' /> \
                                             <attribute name='im360_updated_at' /> \
                                             <link-entity name='im360_country' from='im360_name' to='im360_country' alias='country'> \
-                                            <attribute name='im360_name' /> \
-                                            <filter type='and'> \
-                                                <condition attribute='statecode' operator='eq' value='0' /> \
-                                            </filter> \
+                                                <attribute name='im360_name' /> \
+                                                <filter type='and'> \
+                                                    <condition attribute='statecode' operator='eq' value='0' /> \
+                                                </filter> \
                                             </link-entity> \
-                                            <filter type='and'> ${finalFilterArr.toString()} </filter> \
+                                            <filter type='and'> ${finalFilterArr.toString()} \
+                                                <condition attribute='im360_domain' operator='ne' value='Sales Esc (Legacy)' /> \
+                                                <condition attribute='im360_domain' operator='ne' value='Sales Esc�(Legacy)' /> \
+                                                <condition attribute='im360_domain' operator='ne' value='MS Escalations (Legacy)' /> \
+                                            </filter> \
                                             <order descending='true' attribute='im360_created_at' /> \
                                         </entity> \
                                     </fetch>`;
@@ -306,7 +320,7 @@
                         let updateColumnInGridCellForAll = this.updateColumnInGridCellForAll;
                         let updateColumnInGridCell = this.updateColumnInGridCell;
                         let updateColumnInGridCellForCountry = this.updateColumnInGridCellForCountry;
-                        let updateColumnInGridCellForBCN = this.updateColumnInGridCellForBCN;
+                        //let updateColumnInGridCellForBCN = this.updateColumnInGridCellForBCN;
                         let updateColumnInGridCellForEmail = this.updateColumnInGridCellForEmail;
                         let updateColumnInGridCellForReseller = this.updateColumnInGridCellForReseller;
                         let updateColumnInGridCellForDomain = this.updateColumnInGridCellForDomain;
@@ -323,6 +337,9 @@
                                     return Promise.resolve(); // let the grid continue without forcing a reload
                                 }
                             }),
+                            filterPanel: {
+                                visible: true
+                            },
                             remoteOperations: false,
                             allowColumnReordering: true,
                             rowAlternationEnabled: true,
@@ -357,7 +374,7 @@
                                 if (ticketSearchFromZendeskAPI) {
                                     ticketSearchFromZendeskAPI = false;
                                     await updateColumnInGridCellForCountry(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
-                                    await updateColumnInGridCellForBCN(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+                                    //await updateColumnInGridCellForBCN(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
                                     await updateColumnInGridCellForEmail(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
                                     await updateColumnInGridCellForReseller(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
                                     await updateColumnInGridCellForDomain(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
@@ -455,14 +472,14 @@
                         await updateColumnInGridCell(fieldName, grid, columnName, countryFieldId, zendeskBaseUrl, funcCodeForJsonById);
                     },
 
-                    async updateColumnInGridCellForBCN (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
-                        let fieldName = 'im360_name';
+                    // async updateColumnInGridCellForBCN (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
+                    //     let fieldName = 'im360_name';
                         
-                        // BCN:
-                        columnName = "Ingram BCN#";
-                        let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
-                        await updateColumnInGridCell(fieldName, grid, columnName, bcnFieldId, zendeskBaseUrl, funcCodeForJsonById);
-                    },
+                    //     // BCN:
+                    //     columnName = "Ingram BCN#";
+                    //     let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
+                    //     await updateColumnInGridCell(fieldName, grid, columnName, bcnFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                    // },
 
                     async updateColumnInGridCellForEmail (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
                         let fieldName = 'im360_name';
