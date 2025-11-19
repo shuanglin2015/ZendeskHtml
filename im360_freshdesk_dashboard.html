@@ -146,13 +146,22 @@
 
                         let bcnFilters = '';
                         const defaultFilter = `<condition attribute='im360_bcn' operator='eq' value='${bcn}' />`;
+                        const defaultFilterCMP = `<condition attribute='im360_armid' operator='like' value='%${bcn}%' />`;
                         bcnFilters += defaultFilter;
+                        bcnFilters += defaultFilterCMP;
 
                         const validBcn = bcn.replace(/-/g, "");
                         const numbers = validBcn.match(/\d+/g).map(Number);
                         numbers.forEach(bcnItem => {
                             let possibleBCN = bcnItem.toString();
                             let possibleFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
+                            bcnFilters += possibleFilter;
+                        });
+
+                        // Zendesk ticket: it's possible to save CMP ID (im360_armid) in the BCN field
+                        numbers.forEach(bcnItem => {
+                            let possibleBCN = bcnItem.toString();
+                            let possibleFilter = `<condition attribute='im360_armid' operator='like' value='%${possibleBCN}%' />`;
                             bcnFilters += possibleFilter;
                         });
 
