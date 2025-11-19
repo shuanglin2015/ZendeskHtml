@@ -88,14 +88,19 @@
                         zendeskCountryName = localStorage.getItem('zendesk_country_name');
                         zendeskBCN = localStorage.getItem('zendesk_bcn');
 
-                        if (zendeskBCN && zendeskBCN.indexOf('|') > 0) {
-                            zendeskBCN = zendeskBCN.split("|")[1].trim();
-                        }
+                        // BCN logic (don't need the following code, the bcn is the simple number format already here)
+                        // if (zendeskBCN && zendeskBCN.indexOf('|') > 0) {
+                        //     zendeskBCN = zendeskBCN.split("|")[1].trim();
+                        // }
                         
                         this.generateDatagrid(this.getTickets);
 
-                        localStorage.setItem('zendesk_country_name', '');
-                        localStorage.setItem('zendesk_bcn', '')
+                        // to be tested: to see if this is the proper place for the following two lines:
+                        setTimeout(() => {
+                            localStorage.setItem('zendesk_country_name', '');
+                            localStorage.setItem('zendesk_bcn', '')
+                        }, 20000);
+
                     } else {
                         console.error(`Zendesk Dashboard - Zendesk API URL is null`);
                     }
@@ -133,9 +138,40 @@
                     },
 
                     async getAccountIdByCountryAndBCN(country, bcn) {
-                        if (bcn && bcn.indexOf('|') > 0) {
-                            bcn = bcn.split("|")[1].trim();
+
+                        // BCN logic
+                        if (!bcn || bcn.toLowerCase() === 'na' || bcn === '.' || bcn.toLowerCase() === 'x') {
+                            return null;
                         }
+
+                        let bcnFilters = '';
+                        const defaultFilter = `<condition attribute='im360_bcn' operator='eq' value='${bcn}' />`;
+                        bcnFilters += defaultFilter;
+
+                        const validBcn = bcn.replace(/-/g, "");
+                        const numbers = validBcn.match(/\d+/g).map(Number);
+                        numbers.forEach(bcnItem => {
+                            let possibleBCN = bcnItem.toString();
+                            let possibleFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
+                            bcnFilters += possibleFilter;
+                        });
+
+                        /* possible BCN value: 
+                            50-179892
+                            1000008496 | 41880071 | 3002576
+                            1000009207 (50708711)
+                            1200135560	/ 384738 BERT ROLSTON
+                            1200002059 / 178007	Troppus IT & Management (WA)
+                            17-178742, 17-178802, 17-178812, 17-178832
+                            14-281043 MERCHANT EXPO
+                            .IRG PLOTTERS & PRINTERS INC 14-686831
+                            Advanced Network Management Inc - Account 20-125586
+                            .14-852252
+                            308743 / 1200085322 BUSINESS IT SOUTH LIMITED
+                            1300062325/AERUMA GROUP SDN BHD
+                            "na", "NA"
+                        */
+
                         if (country && bcn) {
                             let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                                 <entity name='account'> \
@@ -146,9 +182,7 @@
                                             <condition attribute='im360_name' operator='eq' value='" + country + "' /> \
                                         </filter> \
                                     </link-entity> \
-                                    <filter type='and'> \
-                                        <condition attribute='im360_bcn' operator='eq' value='" + bcn + "' /> \
-                                    </filter> \
+                                    <filter type='or'> " + bcnFilters + " </filter> \
                                 </entity> \
                                 </fetch>";
 
@@ -173,6 +207,7 @@
 
                     async getTickets() {
                         let results = [];
+                        let bcnFilters = '';
 
                         if (zendeskCountryName) {
                             let countryFilter = `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
@@ -183,12 +218,44 @@
                         }
 
                         if (zendeskBCN) {
-                            let bcnFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${zendeskBCN}%' />`;
                             let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
                             // remove the element that contains the value stored in partOfBcnFilter:
                             finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
-                            finalFilterArr.push(bcnFilter);
+
+                            // BCN logic
+                            if (!zendeskBCN || zendeskBCN.toLowerCase() === 'na' || zendeskBCN === '.' || zendeskBCN.toLowerCase() === 'x') {
+                                bcnFilters = '';
+                            } else {
+                                const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${zendeskBCN}%' />`;
+                                bcnFilters += defaultFilter;
+
+                                const validBcn = zendeskBCN.replace(/-/g, "");
+                                const numbers = validBcn.match(/\d+/g).map(Number);
+                                numbers.forEach(bcnItem => {
+                                    let possibleBCN = bcnItem.toString();
+                                    let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
+                                    bcnFilters += possibleFilter;
+                                });
+                            }
+
+                            /* possible BCN value: 
+                                50-179892
+                                1000008496 | 41880071 | 3002576
+                                1000009207 (50708711)
+                                1200135560	/ 384738 BERT ROLSTON
+                                1200002059 / 178007	Troppus IT & Management (WA)
+                                17-178742, 17-178802, 17-178812, 17-178832
+                                14-281043 MERCHANT EXPO
+                                .IRG PLOTTERS & PRINTERS INC 14-686831
+                                Advanced Network Management Inc - Account 20-125586
+                                .14-852252
+                                308743 / 1200085322 BUSINESS IT SOUTH LIMITED
+                                1300062325/AERUMA GROUP SDN BHD
+                                "na", "NA"
+                            */
                         }
+
+                        let bcnFiltersResult = bcnFilters ? `<filter type="or"> ${bcnFilters}</filter>` : '';
 
                         //let fetchXml = `<fetch top='15'> \
                         let fetchXml = `<fetch> \
@@ -212,18 +279,25 @@
                                                     <condition attribute='statecode' operator='eq' value='0' /> \
                                                 </filter> \
                                             </link-entity> \
-                                            <filter type='and'> ${finalFilterArr.toString()} \
+                                            <filter type='and'> ${finalFilterArr.toString().replace(',', '')} \
                                                 <condition attribute='im360_domain' operator='ne' value='Sales Esc (Legacy)' /> \
                                                 <condition attribute='im360_domain' operator='ne' value='Sales Esc�(Legacy)' /> \
                                                 <condition attribute='im360_domain' operator='ne' value='MS Escalations (Legacy)' /> \
-                                            </filter> \
+                                             ${bcnFiltersResult}</filter> \
                                             <order descending='true' attribute='im360_created_at' /> \
                                         </entity> \
                                     </fetch>`;
+                            console.log(`Zendesk Dashboard - fetchXml for getTickets(): ${fetchXml}`);
 
                         try {
 
                             const result = await Xrm.WebApi.retrieveMultipleRecords("im360_zendesktickets", "?fetchXml=" + fetchXml);
+
+                            // to be tested: to see if this is the proper place for the following two lines:
+                            setTimeout(() => {
+                                localStorage.setItem('zendesk_country_name', '');
+                                localStorage.setItem('zendesk_bcn', '')
+                            }, 10000);
 
                             if (result != null) {
                                 let items = result.entities;

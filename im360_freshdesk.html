@@ -732,10 +732,48 @@
                         let fullUrl = `${url}/main.aspx?appid=${this.appId}&pagetype=dashboard&id=${this.dashboardId}&type=system`;
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
                         localStorage.setItem('zendesk_country_name', zendesk_country);
+                        
                         let bcn = strBCN ? strBCN : this.strBCN;
-                        if (bcn && bcn.indexOf('|') > 0) {
-                            bcn = bcn.split("|")[1].trim();
-                        }
+                        // let zendeskBcn = strBCN ? strBCN : this.strBCN;
+                        // if (bcn && bcn.indexOf('|') > 0) {
+                        //     bcn = bcn.split("|")[1].trim();
+                        // }
+
+                        // BCN logic (don't need the following code, just save the original BCN string from Zendesk, then process it in dashboard page)
+                        // let bcn = '';
+                        // let bcnFilters = '';
+                        // if (!zendeskBcn || zendeskBcn.toLowerCase() === 'na' || zendeskBcn === '.' || zendeskBcn.toLowerCase() === 'x') {
+                        //     bcnFilters = '';
+                        // } else {
+                        //     const defaultFilter = `<condition attribute='im360_bcn' operator='eq' value='${zendeskBcn}' />`;
+                        //     bcnFilters += defaultFilter;
+
+                        //     const validBcn = zendeskBcn.replace(/-/g, "");
+                        //     const numbers = validBcn.match(/\d+/g).map(Number);
+                        //     numbers.forEach(bcnItem => {
+                        //         let possibleBCN = bcnItem.toString();
+                        //         let possibleFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
+                        //         bcnFilters += possibleFilter;
+                        //     });
+                        // }
+
+                        /* possible BCN value: 
+                            50-179892
+                            1000008496 | 41880071 | 3002576
+                            1000009207 (50708711)
+                            1200135560	/ 384738 BERT ROLSTON
+                            1200002059 / 178007	Troppus IT & Management (WA)
+                            17-178742, 17-178802, 17-178812, 17-178832
+                            14-281043 MERCHANT EXPO
+                            .IRG PLOTTERS & PRINTERS INC 14-686831
+                            Advanced Network Management Inc - Account 20-125586
+                            .14-852252
+                            308743 / 1200085322 BUSINESS IT SOUTH LIMITED
+                            1300062325/AERUMA GROUP SDN BHD
+                            "na", "NA"
+                        */
+
+                        
                         localStorage.setItem('zendesk_bcn', bcn);
                         this.hideLoadingPage && this.hideLoadingPage();
 
@@ -787,11 +825,29 @@
                             let ticketCountry = ticket && ticket.strCountry && ticket.strCountry.toLowerCase().trim();
                             let resellerCountry = originalResellerCountry && originalResellerCountry.toLowerCase().trim();
                             let ticketBCN = ticket && ticket.strBCN && ticket.strBCN;
-                            if (ticketBCN && ticketBCN.indexOf('|') > 0) {
-                                ticketBCN = ticketBCN.split("|")[1].trim();
-                            }
+
+                            // if (ticketBCN && ticketBCN.indexOf('|') > 0) {
+                            //     ticketBCN = ticketBCN.split("|")[1].trim();
+                            // }
+                            // BCN logic
                             let resellerBCN = originalResellerBCN;
-                            let belongToReseller = ((ticketCountry == resellerCountry) && (ticketBCN == resellerBCN));
+                            let sameBCN = false;
+
+                            //sameBCN = ticketBCN == resellerBCN;
+                            if (!ticketBCN || ticketBCN.toLowerCase() === 'na' || ticketBCN === '.' || ticketBCN.toLowerCase() === 'x' || !resellerBCN) {
+                                sameBCN = false;
+                            } else {
+                                const validBcn = ticketBCN.replace(/-/g, "");
+                                const numbers = validBcn.match(/\d+/g).map(Number);
+                                numbers.forEach(bcnItem => {
+                                    if (bcnItem.toString().trim() == resellerBCN.trim()) {
+                                        sameBCN = true;
+                                    }
+                                });
+                            }
+
+                            let sameReseller = ticketCountry == resellerCountry;
+                            let belongToReseller = (sameReseller && sameBCN);
                             if (belongToReseller && ticketCountry != '-' && ticketBCN != '-') {
                                 this.record = ticket;
                                 let idAndSubject = `${ticketId}.${ticket.subject}`;
