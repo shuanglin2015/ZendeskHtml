@@ -71,8 +71,7 @@
                         </tr>
                         <tr>
                             <td>{{record.strAgent ? record.strAgent : '-'}}</td>
-                            <!-- <td>{{zendesk_bcn ? zendesk_bcn : '-'}}</td> -->
-                            <td>{{record.strBCN ? record.strBCN : '-'}}</td>
+                            <td>{{record.zendeskBCN ? record.zendeskBCN : '-'}}</td>
                             <td>{{isStage ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value ? record.custom_fields.find(f => f.id === 34395814674196) && record.custom_fields.find(f => f.id === 34395814674196).value : '-' 
                                 : record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value ? record.custom_fields.find(f => f.id === 34691185003796) && record.custom_fields.find(f => f.id === 34691185003796).value : '-'}}</td>
                             <td>{{isStage ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value ? record.custom_fields.find(f => f.id === 21077955613972) && record.custom_fields.find(f => f.id === 21077955613972).value : '-'
@@ -176,10 +175,11 @@
 
     <script>
         let isStage = true;
-        let zendesk_country = '';
-        let zendesk_bcn = '';
+        let localstorage_zendesk_country_name = '';
+        let localstorage_zendesk_im360_bcn = '';
+        
         let im360_armid = '';   // CMP ID
-        let strBCN = '';        // use this BCN for the ticket search by ticket id (it should come from the Zendesk ticket, not from the Acount itself)
+        let Global_ZendeskBCN = '';        // use this BCN for the ticket search by ticket id (it should come from the Zendesk ticket, not from the Acount itself)
         let zendesk_ticketIdParam = '';
         let appId = '';
         let dashboardId = '';
@@ -249,19 +249,19 @@
                         });
                     }
                 });
-                if (!zendesk_country || !zendesk_bcn){
+                if (!localstorage_zendesk_country_name || !localstorage_zendesk_im360_bcn){
                     let account = await this.getAccountCountryAndBCN();
                     if (account) {
-                        zendesk_country = account.CountryName;
-                        zendesk_bcn = account.im360_bcn;
+                        localstorage_zendesk_country_name = account.CountryName;
+                        localstorage_zendesk_im360_bcn = account.im360_bcn;
                         im360_armid = account.im360_armid;
                         im360_armid = im360_armid ? im360_armid.replace(/'/g, "") : '';  // replace all single quote with empty string, for example: {'1000003522'}
-                        originalResellerCountry = zendesk_country;
-                        originalResellerBCN = zendesk_bcn;
+                        originalResellerCountry = localstorage_zendesk_country_name;
+                        originalResellerBCN = localstorage_zendesk_im360_bcn;
                     }
                 }
-                console.log(`${this.pageTitle} - zendesk_country value in mounted(): ${zendesk_country}`);
-                console.log(`${this.pageTitle} - zendesk_bcn value in mounted(): ${zendesk_bcn}`);
+                console.log(`${this.pageTitle} - localstorage_zendesk_country_name value in mounted(): ${localstorage_zendesk_country_name}`);
+                console.log(`${this.pageTitle} - localstorage_zendesk_im360_bcn value in mounted(): ${localstorage_zendesk_im360_bcn}`);
                 this.showLoadingPage && this.showLoadingPage();
                 this.startTime = Date.now();
 
@@ -307,7 +307,7 @@
                     selectedTicketId = zendesk_ticketIdParam;
                 }
 
-                if (this.zendeskBaseUrl && zendesk_country && zendesk_bcn) {
+                if (this.zendeskBaseUrl && localstorage_zendesk_country_name && localstorage_zendesk_im360_bcn) {
                     let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                     if (tickets) {
                         const {selected, selectOptions, items} = tickets;
@@ -351,11 +351,11 @@
                 } else {
                     await new Promise(resolve => setTimeout(resolve, 2000));
 
-                    console.log(`${this.pageTitle} - try again - zendesk_country: ${zendesk_country}`);
-                    console.log(`${this.pageTitle} - try again - zendesk_bcn: ${zendesk_bcn}`);
+                    console.log(`${this.pageTitle} - try again - localstorage_zendesk_country_name: ${localstorage_zendesk_country_name}`);
+                    console.log(`${this.pageTitle} - try again - localstorage_zendesk_im360_bcn: ${localstorage_zendesk_im360_bcn}`);
                     let message = 'try to start getTickets function for the second time';
                     console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
-                    if (zendesk_country && zendesk_bcn) {
+                    if (localstorage_zendesk_country_name && localstorage_zendesk_im360_bcn) {
                         this.notFoundMessage = '';
                         let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                         if (tickets) {
@@ -644,7 +644,7 @@
                 async getTickets(selectedTicketId, showLoadingPage, hideLoadingPage) {
                     let results = [];
 
-                     let filterOrForBCN = `<condition attribute='im360_ingrambcn' operator='like' value='%${zendesk_bcn}%' />`;
+                     let filterOrForBCN = `<condition attribute='im360_ingrambcn' operator='like' value='%${localstorage_zendesk_im360_bcn}%' />`;
                     if (im360_armid) {
                         filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${im360_armid}%' />`;
                     }
@@ -666,7 +666,7 @@
                                             <attribute name='im360_name' /> \
                                             <attribute name='im360_updated_at' /> \
                                                 <filter type='and'> \
-                                                    <condition attribute='im360_country' operator='eq' value='${zendesk_country}' /> \
+                                                    <condition attribute='im360_country' operator='eq' value='${localstorage_zendesk_country_name}' /> \
                                                     <filter type='or'> ${filterOrForBCN} </filter> \
                                                     <condition attribute='im360_domain' operator='ne' value='Sales Esc (Legacy)' /> \
                                                     <condition attribute='im360_domain' operator='ne' value='Sales Esc�(Legacy)' /> \
@@ -740,10 +740,10 @@
                         let url = window.location.protocol + "//" + window.location.host + "/";
                         let fullUrl = `${url}/main.aspx?appid=${this.appId}&pagetype=dashboard&id=${this.dashboardId}&type=system`;
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
-                        localStorage.setItem('zendesk_country_name', zendesk_country);
+                        localStorage.setItem('localstorage_zendesk_country_name', localstorage_zendesk_country_name);
                         
-                        let bcn = strBCN ? strBCN : this.strBCN;
-                        // let zendeskBcn = strBCN ? strBCN : this.strBCN;
+                        let bcn = Global_ZendeskBCN ? Global_ZendeskBCN : this.Global_ZendeskBCN;
+                        // let zendeskBcn = Global_ZendeskBCN ? Global_ZendeskBCN : this.Global_ZendeskBCN;
                         // if (bcn && bcn.indexOf('|') > 0) {
                         //     bcn = bcn.split("|")[1].trim();
                         // }
@@ -782,8 +782,12 @@
                             "na", "NA"
                         */
 
-                        
-                        localStorage.setItem('zendesk_bcn', bcn);
+
+
+
+
+                        // TODO: the following line could be wrong:
+                        localStorage.setItem('localstorage_zendesk_im360_bcn', bcn);
                         this.hideLoadingPage && this.hideLoadingPage();
 
                         if (this.record) {
@@ -833,7 +837,7 @@
                             // check if the ticket id belong to this reseller
                             let ticketCountry = ticket && ticket.strCountry && ticket.strCountry.toLowerCase().trim();
                             let resellerCountry = originalResellerCountry && originalResellerCountry.toLowerCase().trim();
-                            let ticketBCN = ticket && ticket.strBCN && ticket.strBCN;
+                            let ticketBCN = ticket && ticket.zendeskBCN && ticket.zendeskBCN;
 
                             // if (ticketBCN && ticketBCN.indexOf('|') > 0) {
                             //     ticketBCN = ticketBCN.split("|")[1].trim();
@@ -1085,12 +1089,12 @@
                                         let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
                                         const objBCN = result.custom_fields && result.custom_fields.find(item => item.id === bcnFieldId);
                                         const bcnValue = objBCN ? objBCN.value : '';
-                                        // result.strBCN = await getZendeskConfigNameByValue(accessToken, log, bcnValue);
-                                        // if (!result.strBCN && bcnValue != 'NA' && bcnValue != 'N/A') {
-                                        //     result.strBCN = bcnValue ? await getCustomFieldValue(log, bcnFieldId.toString(), bcnValue) : '';
+                                        // result.zendeskBCN = await getZendeskConfigNameByValue(accessToken, log, bcnValue);
+                                        // if (!result.zendeskBCN && bcnValue != 'NA' && bcnValue != 'N/A') {
+                                        //     result.zendeskBCN = bcnValue ? await getCustomFieldValue(log, bcnFieldId.toString(), bcnValue) : '';
                                         // }
-                                        result.strBCN = bcnValue ? bcnValue : '-';
-                                        strBCN = result.strBCN;
+                                        result.zendeskBCN = bcnValue ? bcnValue : '-';
+                                        Global_ZendeskBCN = result.zendeskBCN;
 
                                         hideLoadingPage && hideLoadingPage();
                                         this.hideLoadingPage && this.hideLoadingPage();

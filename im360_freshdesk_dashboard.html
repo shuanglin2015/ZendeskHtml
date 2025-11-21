@@ -30,9 +30,12 @@
             let freshdeskUrl = '';
             let funcCodeForJsonById = '';
             let finalFilterArr = ["<condition attribute='im360_created_at' operator='gt' value='1989-01-01 ' />"];
-            let zendeskCountryName = '';
-            let zendeskBCN = '';
             let ticketSearchFromZendeskAPI = '';
+
+            let localstorage_zendesk_country_name = '';
+            let localstorage_zendesk_im360_bcn = '';
+
+            let localstorage_zendesk_im360_bcn_from_dashboard = '';  // maybe need to clean up this one
 
             let app = new Vue({
                 el: '#app',
@@ -85,20 +88,20 @@
                         } else {
                             isStage = false;
                         }
-                        zendeskCountryName = localStorage.getItem('zendesk_country_name');
-                        zendeskBCN = localStorage.getItem('zendesk_bcn');
+                        localstorage_zendesk_country_name = localStorage.getItem('localstorage_zendesk_country_name');
+                        localstorage_zendesk_im360_bcn = localStorage.getItem('localstorage_zendesk_im360_bcn');
 
                         // BCN logic (don't need the following code, the bcn is the simple number format already here)
-                        // if (zendeskBCN && zendeskBCN.indexOf('|') > 0) {
-                        //     zendeskBCN = zendeskBCN.split("|")[1].trim();
+                        // if (localstorage_zendesk_im360_bcn && localstorage_zendesk_im360_bcn.indexOf('|') > 0) {
+                        //     localstorage_zendesk_im360_bcn = localstorage_zendesk_im360_bcn.split("|")[1].trim();
                         // }
                         
                         this.generateDatagrid(this.getTickets);
 
                         // to be tested: to see if this is the proper place for the following two lines:
                         setTimeout(() => {
-                            localStorage.setItem('zendesk_country_name', '');
-                            localStorage.setItem('zendesk_bcn', '')
+                            localStorage.setItem('localstorage_zendesk_country_name', '');
+                            localStorage.setItem('localstorage_zendesk_im360_bcn', '')
                         }, 20000);
 
                     } else {
@@ -137,20 +140,25 @@
                         );
                     },
 
-                    async getAccountIdByCountryAndBCN(country, bcn) {
+                    async getAccountIdByCountryAndBCN(zendeskCountryName, zendeskBCN) {
 
                         // BCN logic
-                        if (!bcn || bcn.toLowerCase() === 'na' || bcn === '.' || bcn.toLowerCase() === 'x') {
+                        if (!zendeskBCN || zendeskBCN.toLowerCase() === 'na' || zendeskBCN === '.' || zendeskBCN.toLowerCase() === 'x') {
                             return null;
                         }
 
                         let bcnFilters = '';
-                        const defaultFilter = `<condition attribute='im360_bcn' operator='eq' value='${bcn}' />`;
-                        const defaultFilterCMP = `<condition attribute='im360_armid' operator='like' value='%${bcn}%' />`;
+                        const defaultFilter = `<condition attribute='im360_bcn' operator='eq' value='${zendeskBCN}' />`;
+                        const defaultFilterCMP = `<condition attribute='im360_armid' operator='like' value='%${zendeskBCN}%' />`;
                         bcnFilters += defaultFilter;
                         bcnFilters += defaultFilterCMP;
+                        bcnFilters += defaultFilter.replace(/-/g, "")
+                        bcnFilters += defaultFilterCMP.replace(/-/g, "");
+                        const defaultFilterWithZero = `<condition attribute='im360_bcn' operator='eq' value='0${zendeskBCN}' />`;
+                        bcnFilters += defaultFilterWithZero;
+                        bcnFilters += defaultFilterWithZero.replace(/-/g, "");
 
-                        const validBcn = bcn.replace(/-/g, "");
+                        const validBcn = zendeskBCN.replace(/-/g, "");
                         const numbersStrArr = validBcn.match(/\d+/g) || [];
                         numbersStrArr.forEach(bcnItem => {
                             let possibleBCN = bcnItem;
@@ -181,14 +189,16 @@
                             "na", "NA"
                         */
 
-                        if (country && bcn) {
+                        if (zendeskCountryName && zendeskBCN) {
                             let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                                 <entity name='account'> \
                                     <attribute name='accountid' /> \
+                                    <attribute name='im360_bcn' /> \
+                                    <attribute name='im360_armid' /> \
                                     <link-entity name='im360_country' from='im360_countryid' to='im360_country' link-type='inner'> \
                                         <attribute name='im360_name' alias='CountryName' /> \
                                         <filter type='and'> \
-                                            <condition attribute='im360_name' operator='eq' value='" + country + "' /> \
+                                            <condition attribute='im360_name' operator='eq' value='" + zendeskCountryName + "' /> \
                                         </filter> \
                                     </link-entity> \
                                     <filter type='or'> " + bcnFilters + " </filter> \
@@ -198,9 +208,47 @@
                             return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
                                 function success(result) {
                                     if (result != null) {
-                                        return result.entities[0];
+                                        let finalResult = null;
+                                        result.entities.forEach(accountEntity => {
+                                            let accountBCN = accountEntity.im360_bcn;
+                                            let bcnValid = false;
+                                            if (accountBCN) {
+                                                accountBCN = accountBCN.trim();
+                                                // IM360 CMP ID possible value (with single quote): '1000003522'
+                                                accountBCN = accountBCN.replace(/'/g, "");
+                                                if (zendeskBCN.toLowerCase().indexOf(accountBCN.toLowerCase()) > -1) {
+                                                    bcnValid = true;
+                                                }
+                                                if (zendeskBCN.replace(/-/g, "").toLowerCase().indexOf(accountBCN.toLowerCase()) > -1) {
+                                                    bcnValid = true;
+                                                }
+                                            }
+
+                                            let accountCMPID = accountEntity.im360_armid;
+                                            let cmpValid = false;
+                                            if (accountCMPID) {
+                                                accountCMPID = accountCMPID.trim();
+                                                if (zendeskBCN.toLowerCase().indexOf(accountCMPID.toLowerCase()) > -1) {
+                                                    cmpValid = true;
+                                                }
+                                                if (zendeskBCN.replace(/-/g, "").toLowerCase().indexOf(accountCMPID.toLowerCase()) > -1) {
+                                                    cmpValid = true;
+                                                }
+                                            }
+
+                                            if (bcnValid || cmpValid) {
+                                                finalResult = accountEntity;
+                                            }
+                                        });
+
+                                        if (finalResult) {
+                                            return finalResult;
+                                        } else {
+                                            console.log (`Zendesk Dashboard - Cannot get valid IM360 account by Zendesk BCN or CMP ID. zendeskBCN: ${zendeskBCN}, fetchXml: ${fetchXml}`)
+                                            return null;
+                                        }
                                     } else {
-                                        console.error(`Zendesk Dashboard - Cannot get Account by Country and BCN.`);
+                                        console.error(`Zendesk Dashboard - Cannot get Account by Country and BCN. fetchXml: ${fetchXml}`);
                                         return null;
                                     }
                                 },
@@ -219,34 +267,30 @@
                         let bcnFilters = '';
                         let getActiveCountries = this.getActiveCountries;
 
-                        if (zendeskCountryName) {
-                            let countryFilter = `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
+                        if (localstorage_zendesk_country_name) {
+                            let countryFilter = `<condition attribute='im360_country' operator='eq' value='${localstorage_zendesk_country_name}' />`;
                             let partOfCountryFilter = "<condition attribute='im360_country'";
                             // remove the element that contains the value stored in partOfCountryFilter:
                             finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
                             finalFilterArr.push(countryFilter);
                         }
 
-                        if (zendeskBCN) {
+                        if (localstorage_zendesk_im360_bcn_from_dashboard) {
                             let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
                             // remove the element that contains the value stored in partOfBcnFilter:
                             finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
 
                             // BCN logic
-                            if (!zendeskBCN || zendeskBCN.toLowerCase() === 'na' || zendeskBCN === '.' || zendeskBCN.toLowerCase() === 'x') {
-                                bcnFilters = '';
-                            } else {
-                                const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${zendeskBCN}%' />`;
-                                bcnFilters += defaultFilter;
+                            const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${localstorage_zendesk_im360_bcn_from_dashboard}%' />`;
+                            bcnFilters += defaultFilter;
 
-                                const validBcn = zendeskBCN.replace(/-/g, "");
-                                const numbersStrArr = validBcn.match(/\d+/g) || [];
-                                numbersStrArr.forEach(bcnItem => {
-                                    let possibleBCN = bcnItem;
-                                    let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
-                                    bcnFilters += possibleFilter;
-                                });
-                            }
+                            const validBcn = zendeskBCN.replace(/-/g, "");
+                            const numbersStrArr = validBcn.match(/\d+/g) || [];
+                            numbersStrArr.forEach(bcnItem => {
+                                let possibleBCN = bcnItem;
+                                let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
+                                bcnFilters += possibleFilter;
+                            });
 
                             /* possible BCN value: 
                                 50-179892
@@ -305,8 +349,8 @@
 
                             // to be tested: to see if this is the proper place for the following two lines:
                             setTimeout(() => {
-                                localStorage.setItem('zendesk_country_name', '');
-                                localStorage.setItem('zendesk_bcn', '')
+                                localStorage.setItem('localstorage_zendesk_country_name', '');
+                                localStorage.setItem('localstorage_zendesk_im360_bcn', '')
                             }, 10000);
 
                             if (result != null) {
@@ -619,12 +663,11 @@
                                 let data = e.data; // selectedItems.selectedRowsData[0];
                                 console.log(`Zendesk Dashboard - onRowClick -> data: ${JSON.stringify(data)}`);
                                 
-                                let country = data['Country'];
-                                let bcn = data['Ingram BCN#'];
-                                // if (country && accountId != '-') {
+                                let zendeskCountryName = data['Country'];
+                                let zendeskBCN = data['Ingram BCN#'];
                                 let ticketId = data.TicketId;
-                                if (country && country != '-' && bcn && bcn != '-') {
-                                    let accountData = await getAccountIdByCountryAndBCN(country, bcn);
+                                if (zendeskCountryName && zendeskCountryName != '-' && zendeskBCN && zendeskBCN != '-') {
+                                    let accountData = await getAccountIdByCountryAndBCN(zendeskCountryName, zendeskBCN);
                                     /*let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';*/
                                     let accountId = accountData ? accountData.accountid : '-';
                                     console.log(`Zendesk Dashboard - onRowClick -> accountId: ${accountId}`);
@@ -638,6 +681,17 @@
                                         let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                         console.log(`Zendesk Dashboard - fullUrl: ${fullUrl}`);
                                         localStorage.setItem('zendesk_ticketId', ticketId);
+
+
+
+
+
+
+
+
+                                        // TODO: clean up the following code if it's not used in im360_freshdesk.html file
+                                        let localstorage_zendesk_im360_bcn_from_dashboard = accountData ? accountData.im360_bcn : '-';
+                                        localStorage.setItem('localstorage_zendesk_im360_bcn_from_dashboard', localstorage_zendesk_im360_bcn_from_dashboard);
                                         window.open(fullUrl, '_blank');
                                     } else {
                                         Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Cannot get Account Id by Country and BCN. Unable to load account details. [ticket id: ${ticketId}]` })
