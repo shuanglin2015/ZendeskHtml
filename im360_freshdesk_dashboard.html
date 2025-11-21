@@ -150,17 +150,17 @@
                         bcnFilters += defaultFilter;
                         bcnFilters += defaultFilterCMP;
 
-                        const validBcn = bcn ? bcn.replace(/-/g, "") : '';
-                        const numbers = validBcn ? validBcn.match(/\d+/g).map(Number) : null;
-                        numbers.forEach(bcnItem => {
-                            let possibleBCN = bcnItem.toString();
+                        const validBcn = bcn.replace(/-/g, "");
+                        const numbersStrArr = validBcn.match(/\d+/g) || [];
+                        numbersStrArr.forEach(bcnItem => {
+                            let possibleBCN = bcnItem;
                             let possibleFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
                             bcnFilters += possibleFilter;
                         });
 
                         // Zendesk ticket: it's possible to save CMP ID (im360_armid) in the BCN field
-                        numbers.forEach(bcnItem => {
-                            let possibleBCN = bcnItem.toString();
+                        numbersStrArr.forEach(bcnItem => {
+                            let possibleBCN = bcnItem;
                             let possibleFilter = `<condition attribute='im360_armid' operator='like' value='%${possibleBCN}%' />`;
                             bcnFilters += possibleFilter;
                         });
@@ -239,10 +239,10 @@
                                 const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${zendeskBCN}%' />`;
                                 bcnFilters += defaultFilter;
 
-                                const validBcn = zendeskBCN ? zendeskBCN.replace(/-/g, "") : '';
-                                const numbers = validBcn ? validBcn.match(/\d+/g).map(Number) : null;
-                                numbers.forEach(bcnItem => {
-                                    let possibleBCN = bcnItem.toString();
+                                const validBcn = zendeskBCN.replace(/-/g, "");
+                                const numbersStrArr = validBcn.match(/\d+/g) || [];
+                                numbersStrArr.forEach(bcnItem => {
+                                    let possibleBCN = bcnItem;
                                     let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
                                     bcnFilters += possibleFilter;
                                 });

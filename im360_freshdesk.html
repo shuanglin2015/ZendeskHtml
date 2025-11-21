@@ -758,8 +758,8 @@
                         //     bcnFilters += defaultFilter;
 
                         //     const validBcn = zendeskBcn.replace(/-/g, "");
-                        //     const numbers = validBcn ? validBcn.match(/\d+/g).map(Number) : null;
-                        //     numbers.forEach(bcnItem => {
+                        //     const numbersStrArr = validBcn.match(/\d+/g) || [];
+                        //     numbersStrArr.forEach(bcnItem => {
                         //         let possibleBCN = bcnItem.toString();
                         //         let possibleFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
                         //         bcnFilters += possibleFilter;
@@ -847,9 +847,9 @@
                                 sameBCN = false;
                             } else {
                                 const validBcn = ticketBCN.replace(/-/g, "");
-                                const numbers = validBcn ? validBcn.match(/\d+/g).map(Number) : null;
-                                numbers.forEach(bcnItem => {
-                                    if (bcnItem.toString().trim() == resellerBCN.trim()) {
+                                const numbersStrArr = validBcn.match(/\d+/g) || [];
+                                numbersStrArr.forEach(bcnItem => {
+                                    if (bcnItem.trim() == resellerBCN.trim()) {
                                         sameBCN = true;
                                     }
                                 });
