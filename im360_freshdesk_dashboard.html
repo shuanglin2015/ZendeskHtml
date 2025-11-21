@@ -150,8 +150,8 @@
                         bcnFilters += defaultFilter;
                         bcnFilters += defaultFilterCMP;
 
-                        const validBcn = bcn.replace(/-/g, "");
-                        const numbers = validBcn.match(/\d+/g).map(Number);
+                        const validBcn = bcn ? bcn.replace(/-/g, "") : '';
+                        const numbers = validBcn ? validBcn.match(/\d+/g).map(Number) : null;
                         numbers.forEach(bcnItem => {
                             let possibleBCN = bcnItem.toString();
                             let possibleFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
@@ -217,6 +217,7 @@
                     async getTickets() {
                         let results = [];
                         let bcnFilters = '';
+                        let getActiveCountries = this.getActiveCountries;
 
                         if (zendeskCountryName) {
                             let countryFilter = `<condition attribute='im360_country' operator='eq' value='${zendeskCountryName}' />`;
@@ -238,8 +239,8 @@
                                 const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${zendeskBCN}%' />`;
                                 bcnFilters += defaultFilter;
 
-                                const validBcn = zendeskBCN.replace(/-/g, "");
-                                const numbers = validBcn.match(/\d+/g).map(Number);
+                                const validBcn = zendeskBCN ? zendeskBCN.replace(/-/g, "") : '';
+                                const numbers = validBcn ? validBcn.match(/\d+/g).map(Number) : null;
                                 numbers.forEach(bcnItem => {
                                     let possibleBCN = bcnItem.toString();
                                     let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
@@ -394,6 +395,34 @@
                         return results;
                     },
 
+                    async getActiveCountries() {
+                        let fetchXml = "<fetch top='50'> \
+                                        <entity name='im360_country'> \
+                                            <attribute name='im360_name' /> \
+                                            <filter type='and'> \
+                                            <condition attribute='statecode' operator='eq' value='0' /> \
+                                            </filter> \
+                                        </entity> \
+                                        </fetch>";
+
+                        let pageTitle = this.pageTitle;
+                        return Xrm.WebApi.retrieveMultipleRecords("im360_country", "?fetchXml=" + fetchXml).then(
+                            function success(result) {
+                                if (result != null) {
+                                    return result.entities;
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get active countries, the fetchXml is: ${fetchXml}`);
+                                    return null;
+                                }
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                this.hideLoadingPage && this.hideLoadingPage();
+                                return null;
+                            }
+                        );
+                    },
+
                     generateDatagrid(getTickets) {
                         let appId = this.appId;
                         let formId = this.formId;
@@ -407,18 +436,19 @@
                         let updateColumnInGridCellForEmail = this.updateColumnInGridCellForEmail;
                         let updateColumnInGridCellForReseller = this.updateColumnInGridCellForReseller;
                         let updateColumnInGridCellForDomain = this.updateColumnInGridCellForDomain;
+                        let getActiveCountries = this.getActiveCountries;
 
                         // dataSource: ticketsArr,
                         $("#gridContainer").dxDataGrid({
                             dataSource: new DevExpress.data.CustomStore({
                                 key: "TicketId",
                                 load: getTickets,
-                                update: (key, values) => {
-                                    // update your local cache (or call server then resolve)
-                                    const item = localCache.find(i => i.id === key);
-                                    Object.assign(item, values);
-                                    return Promise.resolve(); // let the grid continue without forcing a reload
-                                }
+                                // update: (key, values) => {
+                                //     // update your local cache (or call server then resolve)
+                                //     const item = localCache.find(i => i.id === key);
+                                //     Object.assign(item, values);
+                                //     return Promise.resolve(); // let the grid continue without forcing a reload
+                                // }
                             }),
                             filterPanel: {
                                 visible: true
@@ -456,11 +486,85 @@
 
                                 if (ticketSearchFromZendeskAPI) {
                                     ticketSearchFromZendeskAPI = false;
-                                    await updateColumnInGridCellForCountry(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
-                                    //await updateColumnInGridCellForBCN(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
-                                    await updateColumnInGridCellForEmail(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
-                                    await updateColumnInGridCellForReseller(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
-                                    await updateColumnInGridCellForDomain(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+                                    let countryValue = await updateColumnInGridCellForCountry(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+
+                                    let countryValid = false;
+                                    let activeCountries = await getActiveCountries();
+                                    if (countryValue && activeCountries) {
+                                        activeCountries.forEach(country => {
+                                            if (country && country.im360_name && country.im360_name.toLowerCase() == countryValue.toLowerCase()) {
+                                                countryValid = true;
+                                            }
+                                        });
+                                    }
+                                    if (countryValue && !countryValid) {
+
+                                        // TODO: clear the result in data grid
+                                        const grid = $("#gridContainer").dxDataGrid("instance");
+                                        const store = grid.getDataSource().store();
+
+                                        let keyStr = '';
+                                        const firstRow = grid.getVisibleRows()[0];
+                                        if (firstRow) {
+                                            const key = firstRow.key;
+                                            keyStr = key && key.toString();
+
+                                            store.push([{
+                                                type: "update",
+                                                key: firstRow.key,
+                                                data: {}
+                                            }]);
+                                        }
+
+                                        // update all cells to empty string:
+                                        grid.editCell(0, 'Ticket Id');
+                                        grid.cellValue(0, 'Ticket Id', '');
+                                        grid.closeEditCell();
+
+                                        grid.editCell(0, 'Country');
+                                        grid.cellValue(0, 'Country', '');
+                                        grid.closeEditCell();
+
+                                        grid.editCell(0, 'Ingram BCN#');
+                                        grid.cellValue(0, 'Ingram BCN#', '');
+                                        grid.closeEditCell();
+
+                                        grid.editCell(0, 'Partner email address');
+                                        grid.cellValue(0, 'Partner email address', '');
+                                        grid.closeEditCell();
+
+                                        grid.editCell(0, 'Reseller Name');
+                                        grid.cellValue(0, 'Reseller Name', '');
+                                        grid.closeEditCell();
+
+                                        grid.editCell(0, 'Ticket subject line');
+                                        grid.cellValue(0, 'Ticket subject line', '');
+                                        grid.closeEditCell();
+
+                                        grid.editCell(0, 'Status');
+                                        grid.cellValue(0, 'Status', '');
+                                        grid.closeEditCell();
+
+
+                                        grid.editCell(0, 'Domain');
+                                        grid.cellValue(0, 'Domain', '');
+                                        grid.closeEditCell();
+                                        
+                                        grid.editCell(0, 'Priority');
+                                        grid.cellValue(0, 'Priority', '');
+                                        grid.closeEditCell();
+
+                                        this.hideLoadingPage && this.hideLoadingPage();
+
+                                        let msg = `The country is "${countryValue}" for the ticket with ticket id "${keyStr}", does not belong to this region`;
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg });
+
+                                    } else {
+                                        //await updateColumnInGridCellForBCN(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+                                        await updateColumnInGridCellForEmail(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+                                        await updateColumnInGridCellForReseller(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+                                        await updateColumnInGridCellForDomain(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+                                    }
                                 }
 
                                 console.log("updateFirstRowCell function completed");
@@ -552,7 +656,8 @@
                         // Country:
                         let columnName = "Country";
                         let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                        await updateColumnInGridCell(fieldName, grid, columnName, countryFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                        let countryName = await updateColumnInGridCell(fieldName, grid, columnName, countryFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                        return countryName;
                     },
 
                     // async updateColumnInGridCellForBCN (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
@@ -672,6 +777,7 @@
                             grid.editCell(0, columnName);
                             grid.cellValue(0, columnName, configName);
                             grid.closeEditCell();
+                            return configName;
                         }
                     },
 
@@ -716,6 +822,10 @@
 
             .dx-checkbox-container {
                 height: 25px;
+            }
+
+            .min-col-bcn {
+                min-width: 156px;
             }
         </style>
 

@@ -178,7 +178,8 @@
         let isStage = true;
         let zendesk_country = '';
         let zendesk_bcn = '';
-        let strBCN = '';  // use this BCN for the ticket search by ticket id (it should come from the Zendesk ticket, not from the Acount itself)
+        let im360_armid = '';   // CMP ID
+        let strBCN = '';        // use this BCN for the ticket search by ticket id (it should come from the Zendesk ticket, not from the Acount itself)
         let zendesk_ticketIdParam = '';
         let appId = '';
         let dashboardId = '';
@@ -253,6 +254,8 @@
                     if (account) {
                         zendesk_country = account.CountryName;
                         zendesk_bcn = account.im360_bcn;
+                        im360_armid = account.im360_armid;
+                        im360_armid = im360_armid ? im360_armid.replace(/'/g, "") : '';  // replace all single quote with empty string, for example: {'1000003522'}
                         originalResellerCountry = zendesk_country;
                         originalResellerBCN = zendesk_bcn;
                     }
@@ -422,6 +425,7 @@
                         let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
                             <entity name='account'> \
                                 <attribute name='im360_bcn' /> \
+                                <attribute name='im360_armid' /> \
                                 <link-entity name='im360_country' from='im360_countryid' to='im360_country' link-type='inner'> \
                                     <attribute name='im360_name' alias='CountryName' /> \
                                 </link-entity> \
@@ -640,6 +644,11 @@
                 async getTickets(selectedTicketId, showLoadingPage, hideLoadingPage) {
                     let results = [];
 
+                     let filterOrForBCN = `<condition attribute='im360_ingrambcn' operator='like' value='%${zendesk_bcn}%' />`;
+                    if (im360_armid) {
+                        filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${im360_armid}%' />`;
+                    }
+
                     let fetchXml = `<fetch top='5000'> \
                                         <entity name='im360_zendesktickets'> \
                                             <attribute name='im360_accountid' /> \
@@ -658,7 +667,7 @@
                                             <attribute name='im360_updated_at' /> \
                                                 <filter type='and'> \
                                                     <condition attribute='im360_country' operator='eq' value='${zendesk_country}' /> \
-                                                    <condition attribute='im360_ingrambcn' operator='like' value='%${zendesk_bcn}%' /> \
+                                                    <filter type='or'> ${filterOrForBCN} </filter> \
                                                     <condition attribute='im360_domain' operator='ne' value='Sales Esc (Legacy)' /> \
                                                     <condition attribute='im360_domain' operator='ne' value='Sales Esc�(Legacy)' /> \
                                                     <condition attribute='im360_domain' operator='ne' value='MS Escalations (Legacy)' /> \
@@ -749,7 +758,7 @@
                         //     bcnFilters += defaultFilter;
 
                         //     const validBcn = zendeskBcn.replace(/-/g, "");
-                        //     const numbers = validBcn.match(/\d+/g).map(Number);
+                        //     const numbers = validBcn ? validBcn.match(/\d+/g).map(Number) : null;
                         //     numbers.forEach(bcnItem => {
                         //         let possibleBCN = bcnItem.toString();
                         //         let possibleFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
@@ -838,7 +847,7 @@
                                 sameBCN = false;
                             } else {
                                 const validBcn = ticketBCN.replace(/-/g, "");
-                                const numbers = validBcn.match(/\d+/g).map(Number);
+                                const numbers = validBcn ? validBcn.match(/\d+/g).map(Number) : null;
                                 numbers.forEach(bcnItem => {
                                     if (bcnItem.toString().trim() == resellerBCN.trim()) {
                                         sameBCN = true;
@@ -1467,7 +1476,7 @@
         }
 
         .min-col-bcn {
-            min-width: 150px;
+            min-width: 152px;
         }
     </style>
 
