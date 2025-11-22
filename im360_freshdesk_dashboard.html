@@ -26,11 +26,11 @@
 
         <script>
             let isStage = true;
-            let zendeskBaseUrl = '';
-            let freshdeskUrl = '';
-            let funcCodeForJsonById = '';
-            let finalFilterArr = ["<condition attribute='im360_created_at' operator='gt' value='1989-01-01 ' />"];
-            let ticketSearchFromZendeskAPI = '';
+            let Global_zendeskBaseUrl = '';
+            let Global_freshdeskUrl = '';
+            let Global_funcCodeForJsonById = '';
+            let Global_finalFilterArr = ["<condition attribute='im360_created_at' operator='gt' value='1989-01-01 ' />"];
+            let Global_ticketSearchFromZendeskAPI = '';
 
             let localstorage_zendesk_country_name = '';
             let localstorage_zendesk_im360_bcn = '';
@@ -40,7 +40,7 @@
             let app = new Vue({
                 el: '#app',
                 data: {
-                    freshdeskUrl: '',
+                    Global_freshdeskUrl: '',
                     // default appId value when Configuration FreshdeskAPI -> Value3 is not configured
                     appId: '80ffd75d-69ec-ea11-a817-000d3a8bdb91',
                     // default formId value when Configuration FreshdeskAPI -> Value4 is not configured
@@ -51,16 +51,16 @@
                     let freshdeskConfig = await this.getFreshdeskConfig();
                     if (freshdeskConfig) {
                         let baseUrl = freshdeskConfig.im360_value;
-                        zendeskBaseUrl = baseUrl;
-                        console.log(`Zendesk Dashboard - zendeskBaseUrl from FreshdeskAPI configuration: ${zendeskBaseUrl}`);
+                        Global_zendeskBaseUrl = baseUrl;
+                        console.log(`Zendesk Dashboard - Global_zendeskBaseUrl from FreshdeskAPI configuration: ${Global_zendeskBaseUrl}`);
                         let funcCode = freshdeskConfig.im360_value2;
                         let funcCodeArr = funcCode.toString().split(';;;;');
                         let firstFuncCode = funcCodeArr[0];
                         let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
                         let userName = userSettings && userSettings.userName;
-                        freshdeskUrl = `${zendeskBaseUrl}/getDataById?code=${firstFuncCode}&category=tickets&userName=${userName}&itemId=`;
-                        console.log(freshdeskUrl);
-                        funcCodeForJsonById = funcCodeArr[3];
+                        Global_freshdeskUrl = `${Global_zendeskBaseUrl}/getDataById?code=${firstFuncCode}&category=tickets&userName=${userName}&itemId=`;
+                        console.log(`Global_freshdeskUrl: ${Global_freshdeskUrl}`);
+                        Global_funcCodeForJsonById = funcCodeArr[3];
 
                         let im360_value3 = freshdeskConfig.im360_value3;
                         if (im360_value3) {
@@ -77,13 +77,13 @@
                         console.error(`Zendesk Dashboard - freshdeskConfig is null`);
                     }
 
-                    if (freshdeskUrl) {
-                        console.log(`Zendesk Dashboard - freshdeskUrl: ${freshdeskUrl}`);
+                    if (Global_freshdeskUrl) {
+                        console.log(`Zendesk Dashboard - Global_freshdeskUrl: ${Global_freshdeskUrl}`);
 
                         let stageApi1 = 'crm-zendesk-api.azurewebsites.net';
                         let stageApi2 = 'crm-zendesk-api-dev.azurewebsites.net';
                         let stageApi3 = 'crm-zendesk-api-uat.azurewebsites.net';
-                        if ((freshdeskUrl.indexOf(stageApi1) > -1) || (freshdeskUrl.indexOf(stageApi2) > -1) || (freshdeskUrl.indexOf(stageApi3) > -1)) {
+                        if ((Global_freshdeskUrl.indexOf(stageApi1) > -1) || (Global_freshdeskUrl.indexOf(stageApi2) > -1) || (Global_freshdeskUrl.indexOf(stageApi3) > -1)) {
                             isStage = true;
                         } else {
                             isStage = false;
@@ -214,8 +214,6 @@
                                             let bcnValid = false;
                                             if (accountBCN) {
                                                 accountBCN = accountBCN.trim();
-                                                // IM360 CMP ID possible value (with single quote): '1000003522'
-                                                accountBCN = accountBCN.replace(/'/g, "");
                                                 if (zendeskBCN.toLowerCase().indexOf(accountBCN.toLowerCase()) > -1) {
                                                     bcnValid = true;
                                                 }
@@ -231,7 +229,9 @@
                                                 if (zendeskBCN.toLowerCase().indexOf(accountCMPID.toLowerCase()) > -1) {
                                                     cmpValid = true;
                                                 }
-                                                if (zendeskBCN.replace(/-/g, "").toLowerCase().indexOf(accountCMPID.toLowerCase()) > -1) {
+                                                // IM360 CMP ID possible value (with single quote): '1000003522'
+                                                let accountCMPIDWithoutSingleQuote = accountCMPID.replace(/'/g, "");
+                                                if (zendeskBCN.replace(/-/g, "").toLowerCase().indexOf(accountCMPIDWithoutSingleQuote.toLowerCase()) > -1) {
                                                     cmpValid = true;
                                                 }
                                             }
@@ -271,14 +271,14 @@
                             let countryFilter = `<condition attribute='im360_country' operator='eq' value='${localstorage_zendesk_country_name}' />`;
                             let partOfCountryFilter = "<condition attribute='im360_country'";
                             // remove the element that contains the value stored in partOfCountryFilter:
-                            finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
-                            finalFilterArr.push(countryFilter);
+                            Global_finalFilterArr = Global_finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
+                            Global_finalFilterArr.push(countryFilter);
                         }
 
                         if (localstorage_zendesk_im360_bcn_from_dashboard) {
                             let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
                             // remove the element that contains the value stored in partOfBcnFilter:
-                            finalFilterArr = finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
+                            Global_finalFilterArr = Global_finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
 
                             // BCN logic
                             const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${localstorage_zendesk_im360_bcn_from_dashboard}%' />`;
@@ -333,7 +333,7 @@
                                                     <condition attribute='statecode' operator='eq' value='0' /> \
                                                 </filter> \
                                             </link-entity> \
-                                            <filter type='and'> ${finalFilterArr.toString().replace(',', '')} \
+                                            <filter type='and'> ${Global_finalFilterArr.toString().replace(',', '')} \
                                                 <condition attribute='im360_domain' operator='ne' value='Sales Esc (Legacy)' /> \
                                                 <condition attribute='im360_domain' operator='ne' value='Sales Esc�(Legacy)' /> \
                                                 <condition attribute='im360_domain' operator='ne' value='MS Escalations (Legacy)' /> \
@@ -384,13 +384,13 @@
 
                         // <condition attribute='im360_ticketid' operator='eq' value='39744' />
                         let partOfTicketFilter = "<condition attribute='im360_ticketid'";
-                        finalFilterArr = finalFilterArr.filter(item => item.includes(partOfTicketFilter));
-                        let isTicketIdSearch = finalFilterArr.length > 0;
+                        Global_finalFilterArr = Global_finalFilterArr.filter(item => item.includes(partOfTicketFilter));
+                        let isTicketIdSearch = Global_finalFilterArr.length > 0;
 
                         if (results.length == 0 && isTicketIdSearch) {
-                            ticketSearchFromZendeskAPI = true;
-                            const ticketId = finalFilterArr[0].toString().split("value='")[1].split("'")[0];
-                            let freshdeskUrlWithTicketId = `${freshdeskUrl}${ticketId}`;
+                            Global_ticketSearchFromZendeskAPI = true;
+                            const ticketId = Global_finalFilterArr[0].toString().split("value='")[1].split("'")[0];
+                            let freshdeskUrlWithTicketId = `${Global_freshdeskUrl}${ticketId}`;
                             console.log (`Zendesk URL to get ticket by id: ${freshdeskUrlWithTicketId}`);
 
                             try {
@@ -528,9 +528,9 @@
                             onContentReady: async function(e) {
                                 console.log("Grid is ready");
 
-                                if (ticketSearchFromZendeskAPI) {
-                                    ticketSearchFromZendeskAPI = false;
-                                    let countryValue = await updateColumnInGridCellForCountry(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+                                if (Global_ticketSearchFromZendeskAPI) {
+                                    Global_ticketSearchFromZendeskAPI = false;
+                                    let countryValue = await updateColumnInGridCellForCountry(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
 
                                     let countryValid = false;
                                     let activeCountries = await getActiveCountries();
@@ -604,10 +604,10 @@
                                         Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg });
 
                                     } else {
-                                        //await updateColumnInGridCellForBCN(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
-                                        await updateColumnInGridCellForEmail(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
-                                        await updateColumnInGridCellForReseller(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
-                                        await updateColumnInGridCellForDomain(e.component, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell);
+                                        //await updateColumnInGridCellForBCN(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
+                                        await updateColumnInGridCellForEmail(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
+                                        await updateColumnInGridCellForReseller(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
+                                        await updateColumnInGridCellForDomain(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
                                     }
                                 }
 
@@ -618,37 +618,37 @@
                                     if (e.name === "columns") {
                                         clearTimeout(window.searchTimer);
                                         window.searchTimer = setTimeout(() => {
-                                            e.component.refresh(); // reload data, will retrieve the data again by the new finalFilterArr
+                                            e.component.refresh(); // reload data, will retrieve the data again by the new Global_finalFilterArr
                                         }, 800); // wait 800ms after user stops typing
                                     }
 
                                     switch (e.fullName) {
                                         case "columns[0].filterValue":
-                                            finalFilterArr = filterColumnForTicketId('Ticket Id', e.value, finalFilterArr);
+                                            Global_finalFilterArr = filterColumnForTicketId('Ticket Id', e.value, Global_finalFilterArr);
                                             break;
                                         case "columns[1].filterValue":
-                                            finalFilterArr = filterColumn('Country', e.value, finalFilterArr, 'im360_country');
+                                            Global_finalFilterArr = filterColumn('Country', e.value, Global_finalFilterArr, 'im360_country');
                                             break;
                                         case "columns[2].filterValue":
-                                            finalFilterArr = filterColumn('Ingram BCN#', e.value, finalFilterArr, 'im360_ingrambcn');
+                                            Global_finalFilterArr = filterColumn('Ingram BCN#', e.value, Global_finalFilterArr, 'im360_ingrambcn');
                                             break;
                                         case "columns[3].filterValue":
-                                            finalFilterArr = filterColumn('Partner email address', e.value, finalFilterArr, 'im360_partneremailaddress');
+                                            Global_finalFilterArr = filterColumn('Partner email address', e.value, Global_finalFilterArr, 'im360_partneremailaddress');
                                             break;
                                         case "columns[4].filterValue":
-                                            finalFilterArr = filterColumn('Reseller Name', e.value, finalFilterArr, 'im360_resellername');
+                                            Global_finalFilterArr = filterColumn('Reseller Name', e.value, Global_finalFilterArr, 'im360_resellername');
                                             break;
                                         case "columns[5].filterValue":
-                                            finalFilterArr = filterColumn('Ticket subject line', e.value, finalFilterArr, 'im360_name');
+                                            Global_finalFilterArr = filterColumn('Ticket subject line', e.value, Global_finalFilterArr, 'im360_name');
                                             break;
                                         case "columns[6].filterValue":
-                                            finalFilterArr = filterColumn('Status', e.value, finalFilterArr, 'im360_status');
+                                            Global_finalFilterArr = filterColumn('Status', e.value, Global_finalFilterArr, 'im360_status');
                                             break;
                                         case "columns[7].filterValue":
-                                            finalFilterArr = filterColumn('Domain', e.value, finalFilterArr, 'im360_domain');
+                                            Global_finalFilterArr = filterColumn('Domain', e.value, Global_finalFilterArr, 'im360_domain');
                                             break;
                                         case "columns[8].filterValue":
-                                            finalFilterArr = filterColumn('Priority', e.value, finalFilterArr, 'im360_priority');
+                                            Global_finalFilterArr = filterColumn('Priority', e.value, Global_finalFilterArr, 'im360_priority');
                                             break;
                                     }
 
@@ -704,53 +704,53 @@
                         });
                     },
 
-                    async updateColumnInGridCellForCountry (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
+                    async updateColumnInGridCellForCountry (grid, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell) {
                         let fieldName = 'im360_name';
                         
                         // Country:
                         let columnName = "Country";
                         let countryFieldId = isStage ? 31959436739604 : 35138178531732;
-                        let countryName = await updateColumnInGridCell(fieldName, grid, columnName, countryFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                        let countryName = await updateColumnInGridCell(fieldName, grid, columnName, countryFieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById);
                         return countryName;
                     },
 
-                    // async updateColumnInGridCellForBCN (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
+                    // async updateColumnInGridCellForBCN (grid, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell) {
                     //     let fieldName = 'im360_name';
                         
                     //     // BCN:
                     //     columnName = "Ingram BCN#";
                     //     let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
-                    //     await updateColumnInGridCell(fieldName, grid, columnName, bcnFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                    //     await updateColumnInGridCell(fieldName, grid, columnName, bcnFieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById);
                     // },
 
-                    async updateColumnInGridCellForEmail (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
+                    async updateColumnInGridCellForEmail (grid, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell) {
                         let fieldName = 'im360_name';
                         
                         // Partner email address (requester_id):
                         columnName = "Partner email address";
                         let emailFieldId = '';
-                        await updateColumnInGridCell(fieldName, grid, columnName, emailFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                        await updateColumnInGridCell(fieldName, grid, columnName, emailFieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById);
                     },
 
-                    async updateColumnInGridCellForReseller (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
+                    async updateColumnInGridCellForReseller (grid, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell) {
                         let fieldName = 'im360_name';
 
                         // Reseller Name (organization_id):
                         columnName = "Reseller Name";
                         let resellerFieldId = '';
-                        await updateColumnInGridCell(fieldName, grid, columnName, resellerFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                        await updateColumnInGridCell(fieldName, grid, columnName, resellerFieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById);
                     },
 
-                    async updateColumnInGridCellForDomain (grid, zendeskBaseUrl, funcCodeForJsonById, updateColumnInGridCell) {
+                    async updateColumnInGridCellForDomain (grid, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell) {
                         let fieldName = 'im360_name';
 
                         // Domain:
                         columnName = "Domain";
                         let domainFieldId = isStage ? 31042462931476 : 34698829065236;
-                        return updateColumnInGridCell(fieldName, grid, columnName, domainFieldId, zendeskBaseUrl, funcCodeForJsonById);
+                        return updateColumnInGridCell(fieldName, grid, columnName, domainFieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById);
                     },
 
-                    async updateColumnInGridCell(fieldName, grid, columnName, fieldId, zendeskBaseUrl, funcCodeForJsonById) {
+                    async updateColumnInGridCell(fieldName, grid, columnName, fieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById) {
                         let firstRowKey = grid.getKeyByRowIndex(0);
                         if (!firstRowKey) return; // grid might be empty (the ticket id value user typed)
                         let configName = '';
@@ -788,7 +788,7 @@
 
                                 try {
                                     if (jsonPath === 'ticket_fields') {
-                                        const url = `${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`;
+                                        const url = `${Global_zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${Global_funcCodeForJsonById}`;
                                         const fieldDataResult = await axios.get(url);
                                         let fieldData = fieldDataResult ? await fieldDataResult.data : '';
                                         if (fieldData && fieldData.ticket_field && fieldData.ticket_field.custom_field_options) {
@@ -801,7 +801,7 @@
                                     }
 
                                     if (jsonPath === 'users') {
-                                        const url = `${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${fieldValue}&code=${funcCodeForJsonById}`;
+                                        const url = `${Global_zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${fieldValue}&code=${Global_funcCodeForJsonById}`;
                                         const fieldDataResult = await axios.get(url);
                                         let fieldData = fieldDataResult ? await fieldDataResult.data : '';
                                         if (fieldData && fieldData.user) {
@@ -813,7 +813,7 @@
                                     }
 
                                     if (jsonPath === 'organizations') {
-                                        const url = `${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${fieldValue}&code=${funcCodeForJsonById}`;
+                                        const url = `${Global_zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${fieldValue}&code=${Global_funcCodeForJsonById}`;
                                         const fieldDataResult = await axios.get(url);
                                         let fieldData = fieldDataResult ? await fieldDataResult.data : '';
                                         if (fieldData && fieldData.organization) {
