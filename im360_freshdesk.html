@@ -116,41 +116,6 @@
                 </div>
             </div>
 
-            <!-- <div v-if="record && record.subject">
-                <div class="MainMessage">
-                    <div v-if="record.attachments && record.attachments[0]">
-                        <strong>Attachments:</strong>
-                        <ul>
-                            <li v-for="item in record.attachments" :key="item.name">
-                                <a :href="item.attachment_url" target="_blank">{{item.name}}</a>
-                            </li>
-                        </ul>
-                        <br>
-                    </div>
-                    
-                    <div v-if="record.requesterEmail">
-                        <strong class="MessageHeaderWithoutLeftMargin">{{record.created_at.substring(0, 10)}}
-                        {{record.created_at.substring(11,19)}} From: {{record.requesterEmail}}</strong>
-                    </div>
-                    
-                    <div class="scrollableDiv">
-                        <br>
-                        <div style="margin-left: 20px;" v-html="record.description ? record.description.replace(/\n/g, '<br>') : ''"></div>
-                        <br>
-                        <br>
-                        <div v-if="record.conversations && record.conversations[record.conversations.length-1] && record.conversations[record.conversations.length-1].attachments && record.conversations[record.conversations.length-1].attachments.length > 0">
-                            <strong>Attachments:</strong>
-                            <ul>
-                                <li v-for="attach in record.conversations[record.conversations.length-1].attachments" :key="attach.file_name">
-                                    <a :href="attach.content_url" target="_blank">{{attach.file_name}}</a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                    
-                </div>
-            </div> -->
-            
             <div v-if="!notFoundMessage" class="collapse-ticket-summary">
                 <el-row>
                     <el-collapse>
@@ -176,16 +141,15 @@
     <script>
         let isStage = true;
         let Global_im360_armid = '';               // CMP ID
-        let Global_ZendeskBCN = '';         // use this BCN for the ticket search by ticket id (it should come from the Zendesk ticket, not from the Account itself)
+        let Global_ZendeskBCN = '';                // use this BCN for the ticket search by ticket id (it should come from the Zendesk ticket, not from the Account itself)
         let Global_zendesk_ticketIdParam = '';
         let Global_appId = '';
         let Global_dashboardId = '';
         let Global_originalResellerCountry = '';
         let Global_originalResellerBCN = '';
 
-        let localstorage_zendesk_country_name = '';
-        let localstorage_zendesk_im360_bcn = '';
-        let localstorage_zendesk_im360_bcn_from_dashboard = '';
+        let Global_country_name = '';
+        let Global_im360_bcn = '';
 
         function setClientApiContext(Xrm, context, accountBCN, newnavigationtab) {
             var pageTitle = 'Zendesk';
@@ -249,19 +213,20 @@
                         });
                     }
                 });
-                if (!localstorage_zendesk_country_name || !localstorage_zendesk_im360_bcn){
+                if (!Global_country_name || !Global_im360_bcn){
                     let account = await this.getAccountCountryAndBCN();
                     if (account) {
-                        localstorage_zendesk_country_name = account.CountryName;
-                        localstorage_zendesk_im360_bcn = account.im360_bcn;
+                        Global_country_name = account.CountryName;
+                        Global_im360_bcn = account.im360_bcn;
                         Global_im360_armid = account.im360_armid;
-                        Global_im360_armid = Global_im360_armid ? Global_im360_armid.replace(/'/g, "") : '';  // replace all single quote with empty string, for example: {'1000003522'}
-                        Global_originalResellerCountry = localstorage_zendesk_country_name;
-                        Global_originalResellerBCN = localstorage_zendesk_im360_bcn;
+                        // replace all single quote with empty string, for example: {'1000003522'}
+                        Global_im360_armid = Global_im360_armid ? Global_im360_armid.replace(/'/g, "") : '';
+                        Global_originalResellerCountry = Global_country_name;
+                        Global_originalResellerBCN = Global_im360_bcn;
                     }
                 }
-                console.log(`${this.pageTitle} - localstorage_zendesk_country_name value in mounted(): ${localstorage_zendesk_country_name}`);
-                console.log(`${this.pageTitle} - localstorage_zendesk_im360_bcn value in mounted(): ${localstorage_zendesk_im360_bcn}`);
+                console.log(`${this.pageTitle} - Global_country_name value in mounted(): ${Global_country_name}`);
+                console.log(`${this.pageTitle} - Global_im360_bcn value in mounted(): ${Global_im360_bcn}`);
                 this.showLoadingPage && this.showLoadingPage();
                 this.startTime = Date.now();
 
@@ -307,7 +272,7 @@
                     selectedTicketId = Global_zendesk_ticketIdParam;
                 }
 
-                if (this.zendeskBaseUrl && localstorage_zendesk_country_name && localstorage_zendesk_im360_bcn) {
+                if (this.zendeskBaseUrl && Global_country_name && Global_im360_bcn) {
                     let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                     if (tickets) {
                         // Question: is it possible for the ticketId to be null if the "tickets" is not null? - it's not possible
@@ -351,11 +316,11 @@
                 } else {
                     await new Promise(resolve => setTimeout(resolve, 2000));
 
-                    console.log(`${this.pageTitle} - try again - localstorage_zendesk_country_name: ${localstorage_zendesk_country_name}`);
-                    console.log(`${this.pageTitle} - try again - localstorage_zendesk_im360_bcn: ${localstorage_zendesk_im360_bcn}`);
+                    console.log(`${this.pageTitle} - try again - Global_country_name: ${Global_country_name}`);
+                    console.log(`${this.pageTitle} - try again - Global_im360_bcn: ${Global_im360_bcn}`);
                     let message = 'try to start getTickets function for the second time';
                     console.log(`${this.pageTitle} - ${message}. ZendeskBaseUrl: ${this.zendeskBaseUrl}`);
-                    if (localstorage_zendesk_country_name && localstorage_zendesk_im360_bcn) {
+                    if (Global_country_name && Global_im360_bcn) {
                         this.notFoundMessage = '';
                         let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                         if (tickets) {
@@ -382,7 +347,7 @@
                     }
                 }
 
-                localStorage.setItem('zendesk_ticketId', '');   // TODO: confirm if we can put this line here
+                localStorage.setItem('zendesk_ticketId', '');   // TODO: confirm if this is the best place to put this line
 
             },
             methods: {
@@ -644,11 +609,12 @@
                 async getTickets(selectedTicketId, showLoadingPage, hideLoadingPage) {
                     let results = [];
 
-                    if (localstorage_zendesk_im360_bcn && localstorage_zendesk_im360_bcn.length > 0) {
-                        let filterOrForBCN = `<condition attribute='im360_ingrambcn' operator='like' value='%${localstorage_zendesk_im360_bcn}%' />`;
+                    // IM360 BCN must exist, it's from the account record:
+                    if (Global_im360_bcn && Global_im360_bcn.length > 0) {
+                        let filterOrForBCN = `<condition attribute='im360_ingrambcn' operator='like' value='%${Global_im360_bcn}%' />`;
                         // add "-" after the second digits, for example: "41389412" -> "41-389412"
-                        if (localstorage_zendesk_im360_bcn.length > 2) {
-                            let bcnWithDash = localstorage_zendesk_im360_bcn.slice(0, 2) + "-" + localstorage_zendesk_im360_bcn.slice(2);
+                        if (Global_im360_bcn.length > 2) {
+                            let bcnWithDash = Global_im360_bcn.slice(0, 2) + "-" + Global_im360_bcn.slice(2);
                             filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${bcnWithDash}%' />`;
                         }
                         if (Global_im360_armid && Global_im360_armid.length > 0) {
@@ -679,7 +645,7 @@
                                                 <attribute name='im360_name' /> \
                                                 <attribute name='im360_updated_at' /> \
                                                     <filter type='and'> \
-                                                        <condition attribute='im360_country' operator='eq' value='${localstorage_zendesk_country_name}' /> \
+                                                        <condition attribute='im360_country' operator='eq' value='${Global_country_name}' /> \
                                                         <condition attribute='im360_ingrambcn' operator='ne' value='Review and Update (Do Not Use)' /> \
                                                         <condition attribute='im360_ingrambcn' operator='ne' value='na' /> \
                                                         <condition attribute='im360_ingrambcn' operator='ne' value='NA' /> \
@@ -761,7 +727,7 @@
                         let url = window.location.protocol + "//" + window.location.host + "/";
                         let fullUrl = `${url}/main.aspx?appid=${this.Global_appId}&pagetype=dashboard&id=${this.Global_dashboardId}&type=system`;
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
-                        localStorage.setItem('localstorage_zendesk_country_name', localstorage_zendesk_country_name);
+                        localStorage.setItem('zendesk_country_name', Global_country_name);
                         
                         let bcn = Global_ZendeskBCN ? Global_ZendeskBCN : this.Global_ZendeskBCN;
                         // let zendeskBcn = Global_ZendeskBCN ? Global_ZendeskBCN : this.Global_ZendeskBCN;
@@ -807,8 +773,8 @@
 
 
 
-                        // TODO: the following line could be wrong:
-                        localStorage.setItem('localstorage_zendesk_im360_bcn', bcn);
+                        // TODO: the following line could be wrong: bcn is not im360_bcn, it's Zendesk BCN
+                        localStorage.setItem('zendesk_im360_bcn', bcn);
                         this.hideLoadingPage && this.hideLoadingPage();
 
                         if (this.record) {
@@ -894,7 +860,7 @@
                                 this.hideLoadingPage && this.hideLoadingPage();
                             } else {
                                 let msg = "The ticket ID you searched for does not belong to the current reseller. Please search under the correct reseller account or use the Support Tickets dashboard to locate it.";
-                                Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg })
+                                Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg });
                                 this.hideLoadingPage && this.hideLoadingPage();
                             }
                             
@@ -903,13 +869,13 @@
                             let ticketId = getTicketId(inputValue);
                             if (isNaN(ticketId)) {
                                 if (this.selectedIdAndSubject && isNaN(this.selectedIdAndSubject) && isNaN(getTicketId(this.selectedIdAndSubject))) {
-                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type a number as Ticket Id to search." })
+                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type a number as Ticket Id to search." });
                                 }
                             }
                         }
                     } else {
                         this.hideLoadingPage && this.hideLoadingPage();
-                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type Ticket Id to search." })
+                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type Ticket Id to search." });
                     }
                     this.hideLoadingPage && this.hideLoadingPage();
                 },
@@ -1225,7 +1191,7 @@
                 async retrieveTicket() {
                     let ticketId = this.inputTicketId;
                     if (!ticketId) {
-                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type Ticket Id to search" })
+                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type Ticket Id to search" });
                     } else {
                         this.showLoadingPage && this.showLoadingPage();
                         this.selectedIdAndSubject = '';

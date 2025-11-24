@@ -32,10 +32,8 @@
             let Global_finalFilterArr = ["<condition attribute='im360_created_at' operator='gt' value='1989-01-01 ' />"];
             let Global_ticketSearchFromZendeskAPI = '';
 
-            let localstorage_zendesk_country_name = '';
-            let localstorage_zendesk_im360_bcn = '';
-
-            let localstorage_zendesk_im360_bcn_from_dashboard = '';  // maybe need to clean up this one
+            let Global_country_name = '';
+            let Global_im360_bcn = '';
 
             let app = new Vue({
                 el: '#app',
@@ -88,20 +86,15 @@
                         } else {
                             isStage = false;
                         }
-                        localstorage_zendesk_country_name = localStorage.getItem('localstorage_zendesk_country_name');
-                        localstorage_zendesk_im360_bcn = localStorage.getItem('localstorage_zendesk_im360_bcn');
-
-                        // BCN logic (don't need the following code, the bcn is the simple number format already here)
-                        // if (localstorage_zendesk_im360_bcn && localstorage_zendesk_im360_bcn.indexOf('|') > 0) {
-                        //     localstorage_zendesk_im360_bcn = localstorage_zendesk_im360_bcn.split("|")[1].trim();
-                        // }
+                        Global_country_name = localStorage.getItem('zendesk_country_name');
+                        Global_im360_bcn = localStorage.getItem('zendesk_im360_bcn');
                         
                         this.generateDatagrid(this.getTickets);
 
                         // to be tested: to see if this is the proper place for the following two lines:
                         setTimeout(() => {
-                            localStorage.setItem('localstorage_zendesk_country_name', '');
-                            localStorage.setItem('localstorage_zendesk_im360_bcn', '')
+                            localStorage.setItem('zendesk_country_name', '');
+                            localStorage.setItem('zendesk_im360_bcn', '')
                         }, 20000);
 
                     } else {
@@ -158,19 +151,20 @@
                         bcnFilters += defaultFilterWithZero;
                         bcnFilters += defaultFilterWithZero.replace(/-/g, "");
 
+                        // valid BCN should not contain "-" (only 75 BCNs with "-" on P01, EMEA: 1, APAC: 55, ANZ: 0)
                         const validBcn = zendeskBCN.replace(/-/g, "");
                         const numbersStrArr = validBcn.match(/\d+/g) || [];
                         numbersStrArr.forEach(bcnItem => {
                             let possibleBCN = bcnItem;
-                            let possibleFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
-                            bcnFilters += possibleFilter;
+                            let possibleBcnFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
+                            bcnFilters += possibleBcnFilter;
                         });
 
-                        // Zendesk ticket: it's possible to save CMP ID (im360_armid) in the BCN field
-                        numbersStrArr.forEach(bcnItem => {
-                            let possibleBCN = bcnItem;
-                            let possibleFilter = `<condition attribute='im360_armid' operator='like' value='%${possibleBCN}%' />`;
-                            bcnFilters += possibleFilter;
+                        // Zendesk ticket: it's possible to save CMP ID (im360_armid) in the BCN field (CMP IDs are all numbers, or numbers with single quote)
+                        numbersStrArr.forEach(armIdItem => {
+                            let possibleArmId = armIdItem;
+                            let possibleArmIdFilter = `<condition attribute='im360_armid' operator='like' value='%${possibleArmId}%' />`;
+                            bcnFilters += possibleArmIdFilter;
                         });
 
                         /* possible BCN value: 
@@ -187,6 +181,7 @@
                             308743 / 1200085322 BUSINESS IT SOUTH LIMITED
                             1300062325/AERUMA GROUP SDN BHD
                             "na", "NA"
+                            022816
                         */
 
                         if (zendeskCountryName && zendeskBCN) {
@@ -214,6 +209,7 @@
                                             let bcnValid = false;
                                             if (accountBCN) {
                                                 accountBCN = accountBCN.trim();
+                                                // Zendesk BCN could be a string start with "0", for example, BCN = "022816" (ticket id =24028413) in ANZ Prod
                                                 if (zendeskBCN.toLowerCase().indexOf(accountBCN.toLowerCase()) > -1) {
                                                     bcnValid = true;
                                                 }
@@ -267,46 +263,48 @@
                         let bcnFilters = '';
                         let getActiveCountries = this.getActiveCountries;
 
-                        if (localstorage_zendesk_country_name) {
-                            let countryFilter = `<condition attribute='im360_country' operator='eq' value='${localstorage_zendesk_country_name}' />`;
+                        if (Global_country_name) {
+                            let countryFilter = `<condition attribute='im360_country' operator='eq' value='${Global_country_name}' />`;
                             let partOfCountryFilter = "<condition attribute='im360_country'";
                             // remove the element that contains the value stored in partOfCountryFilter:
                             Global_finalFilterArr = Global_finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
                             Global_finalFilterArr.push(countryFilter);
                         }
 
-                        if (localstorage_zendesk_im360_bcn_from_dashboard) {
+                        /* possible BCN value: 
+                            50-179892
+                            1000008496 | 41880071 | 3002576
+                            1000009207 (50708711)
+                            1200135560	/ 384738 BERT ROLSTON
+                            1200002059 / 178007	Troppus IT & Management (WA)
+                            17-178742, 17-178802, 17-178812, 17-178832
+                            14-281043 MERCHANT EXPO
+                            .IRG PLOTTERS & PRINTERS INC 14-686831
+                            Advanced Network Management Inc - Account 20-125586
+                            .14-852252
+                            308743 / 1200085322 BUSINESS IT SOUTH LIMITED
+                            1300062325/AERUMA GROUP SDN BHD
+                            "na", "NA"
+                        */
+                        if (Global_im360_bcn) {
                             let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
                             // remove the element that contains the value stored in partOfBcnFilter:
                             Global_finalFilterArr = Global_finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
 
                             // BCN logic
-                            const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${localstorage_zendesk_im360_bcn_from_dashboard}%' />`;
+                            const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${Global_im360_bcn}%' />`;
                             bcnFilters += defaultFilter;
 
-                            const validBcn = zendeskBCN.replace(/-/g, "");
-                            const numbersStrArr = validBcn.match(/\d+/g) || [];
-                            numbersStrArr.forEach(bcnItem => {
-                                let possibleBCN = bcnItem;
-                                let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
-                                bcnFilters += possibleFilter;
-                            });
+                            // if the BCN is not in the Zendesk ticket (only contains CMP ID), when the user type BCN in the IM360 global search box to find the Account, then check the tickets, the tickets will be filtered by BCN or CMP ID, so it'll find that ticket.
 
-                            /* possible BCN value: 
-                                50-179892
-                                1000008496 | 41880071 | 3002576
-                                1000009207 (50708711)
-                                1200135560	/ 384738 BERT ROLSTON
-                                1200002059 / 178007	Troppus IT & Management (WA)
-                                17-178742, 17-178802, 17-178812, 17-178832
-                                14-281043 MERCHANT EXPO
-                                .IRG PLOTTERS & PRINTERS INC 14-686831
-                                Advanced Network Management Inc - Account 20-125586
-                                .14-852252
-                                308743 / 1200085322 BUSINESS IT SOUTH LIMITED
-                                1300062325/AERUMA GROUP SDN BHD
-                                "na", "NA"
-                            */
+                            // Error: zendeskBCN is not defined:
+                            // const validBcn = zendeskBCN.replace(/-/g, "");
+                            // const numbersStrArr = validBcn.match(/\d+/g) || [];
+                            // numbersStrArr.forEach(bcnItem => {
+                            //     let possibleBCN = bcnItem;
+                            //     let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
+                            //     bcnFilters += possibleFilter;
+                            // });
                         }
 
                         let bcnFiltersResult = bcnFilters ? `<filter type="or"> ${bcnFilters}</filter>` : '';
@@ -349,8 +347,8 @@
 
                             // to be tested: to see if this is the proper place for the following two lines:
                             setTimeout(() => {
-                                localStorage.setItem('localstorage_zendesk_country_name', '');
-                                localStorage.setItem('localstorage_zendesk_im360_bcn', '')
+                                localStorage.setItem('zendesk_country_name', '');
+                                localStorage.setItem('zendesk_im360_bcn', '')
                             }, 10000);
 
                             if (result != null) {
@@ -476,7 +474,6 @@
                         let updateColumnInGridCellForAll = this.updateColumnInGridCellForAll;
                         let updateColumnInGridCell = this.updateColumnInGridCell;
                         let updateColumnInGridCellForCountry = this.updateColumnInGridCellForCountry;
-                        //let updateColumnInGridCellForBCN = this.updateColumnInGridCellForBCN;
                         let updateColumnInGridCellForEmail = this.updateColumnInGridCellForEmail;
                         let updateColumnInGridCellForReseller = this.updateColumnInGridCellForReseller;
                         let updateColumnInGridCellForDomain = this.updateColumnInGridCellForDomain;
@@ -542,8 +539,6 @@
                                         });
                                     }
                                     if (countryValue && !countryValid) {
-
-                                        // TODO: clear the result in data grid
                                         const grid = $("#gridContainer").dxDataGrid("instance");
                                         const store = grid.getDataSource().store();
 
@@ -604,7 +599,6 @@
                                         Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg });
 
                                     } else {
-                                        //await updateColumnInGridCellForBCN(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
                                         await updateColumnInGridCellForEmail(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
                                         await updateColumnInGridCellForReseller(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
                                         await updateColumnInGridCellForDomain(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
@@ -618,40 +612,44 @@
                                     if (e.name === "columns") {
                                         clearTimeout(window.searchTimer);
                                         window.searchTimer = setTimeout(() => {
-                                            e.component.refresh(); // reload data, will retrieve the data again by the new Global_finalFilterArr
-                                        }, 800); // wait 800ms after user stops typing
+                                            e.component.refresh();     // reload data, will retrieve the data again by the new Global_finalFilterArr
+                                        }, 800);                       // wait 800ms after user stops typing
                                     }
 
-                                    switch (e.fullName) {
-                                        case "columns[0].filterValue":
-                                            Global_finalFilterArr = filterColumnForTicketId('Ticket Id', e.value, Global_finalFilterArr);
-                                            break;
-                                        case "columns[1].filterValue":
-                                            Global_finalFilterArr = filterColumn('Country', e.value, Global_finalFilterArr, 'im360_country');
-                                            break;
-                                        case "columns[2].filterValue":
-                                            Global_finalFilterArr = filterColumn('Ingram BCN#', e.value, Global_finalFilterArr, 'im360_ingrambcn');
-                                            break;
-                                        case "columns[3].filterValue":
-                                            Global_finalFilterArr = filterColumn('Partner email address', e.value, Global_finalFilterArr, 'im360_partneremailaddress');
-                                            break;
-                                        case "columns[4].filterValue":
-                                            Global_finalFilterArr = filterColumn('Reseller Name', e.value, Global_finalFilterArr, 'im360_resellername');
-                                            break;
-                                        case "columns[5].filterValue":
-                                            Global_finalFilterArr = filterColumn('Ticket subject line', e.value, Global_finalFilterArr, 'im360_name');
-                                            break;
-                                        case "columns[6].filterValue":
-                                            Global_finalFilterArr = filterColumn('Status', e.value, Global_finalFilterArr, 'im360_status');
-                                            break;
-                                        case "columns[7].filterValue":
-                                            Global_finalFilterArr = filterColumn('Domain', e.value, Global_finalFilterArr, 'im360_domain');
-                                            break;
-                                        case "columns[8].filterValue":
-                                            Global_finalFilterArr = filterColumn('Priority', e.value, Global_finalFilterArr, 'im360_priority');
-                                            break;
+                                    if (e.value && typeof e.value === "string" && e.value.indexOf("'") > -1) {
+                                        // if the user typed text contains single quote, it'll throw "Data loading error"
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `The search key word should not contain single quote.` })
+                                    } else {
+                                        switch (e.fullName) {
+                                            case "columns[0].filterValue":
+                                                Global_finalFilterArr = filterColumnForTicketId('Ticket Id', e.value, Global_finalFilterArr);
+                                                break;
+                                            case "columns[1].filterValue":
+                                                Global_finalFilterArr = filterColumn('Country', e.value, Global_finalFilterArr, 'im360_country');
+                                                break;
+                                            case "columns[2].filterValue":
+                                                Global_finalFilterArr = filterColumn('Ingram BCN#', e.value, Global_finalFilterArr, 'im360_ingrambcn');
+                                                break;
+                                            case "columns[3].filterValue":
+                                                Global_finalFilterArr = filterColumn('Partner email address', e.value, Global_finalFilterArr, 'im360_partneremailaddress');
+                                                break;
+                                            case "columns[4].filterValue":
+                                                Global_finalFilterArr = filterColumn('Reseller Name', e.value, Global_finalFilterArr, 'im360_resellername');
+                                                break;
+                                            case "columns[5].filterValue":
+                                                Global_finalFilterArr = filterColumn('Ticket subject line', e.value, Global_finalFilterArr, 'im360_name');
+                                                break;
+                                            case "columns[6].filterValue":
+                                                Global_finalFilterArr = filterColumn('Status', e.value, Global_finalFilterArr, 'im360_status');
+                                                break;
+                                            case "columns[7].filterValue":
+                                                Global_finalFilterArr = filterColumn('Domain', e.value, Global_finalFilterArr, 'im360_domain');
+                                                break;
+                                            case "columns[8].filterValue":
+                                                Global_finalFilterArr = filterColumn('Priority', e.value, Global_finalFilterArr, 'im360_priority');
+                                                break;
+                                        }
                                     }
-
 
                                     // // global search:
                                     // if (e.name === "searchPanel" && e.fullName === "searchPanel.text") {
@@ -669,35 +667,24 @@
                                 if (zendeskCountryName && zendeskCountryName != '-' && zendeskBCN && zendeskBCN != '-') {
                                     let accountData = await getAccountIdByCountryAndBCN(zendeskCountryName, zendeskBCN);
                                     /*let accountId = '8e70a94a-9a02-e911-a961-000d3a30e34c';*/
-                                    let accountId = accountData ? accountData.accountid : '-';
+                                    let accountId = accountData ? accountData.accountid : '';
                                     console.log(`Zendesk Dashboard - onRowClick -> accountId: ${accountId}`);
 
                                     let url = window.location.protocol + "//" + window.location.host + "/";
                                     let fieldName = 'im360_newnavigationtab';
-                                    let tabName = 'tab_freshdesk';    
+                                    let tabName = 'tab_freshdesk';
                                     let selectedResellerId = data['Ingram BCN#'];
 
-                                    if (accountId && accountId != '-') {
+                                    if (accountId) {
                                         let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                         console.log(`Zendesk Dashboard - fullUrl: ${fullUrl}`);
                                         localStorage.setItem('zendesk_ticketId', ticketId);
-
-
-
-
-
-
-
-
-                                        // TODO: clean up the following code if it's not used in im360_freshdesk.html file
-                                        let localstorage_zendesk_im360_bcn_from_dashboard = accountData ? accountData.im360_bcn : '-';
-                                        localStorage.setItem('localstorage_zendesk_im360_bcn_from_dashboard', localstorage_zendesk_im360_bcn_from_dashboard);
                                         window.open(fullUrl, '_blank');
                                     } else {
-                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Cannot get Account Id by Country and BCN. Unable to load account details. [ticket id: ${ticketId}]` })
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Cannot get Account Id by Country and BCN. Unable to load account details. [ticket id: ${ticketId}]` });
                                     }
                                 } else {
-                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Country or BCN is not available. Unable to load account details. [ticket id: ${ticketId}]` })
+                                    Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Country or BCN is not available. Unable to load account details. [ticket id: ${ticketId}]` });
                                 }
                                 return null;
                             }
@@ -713,15 +700,6 @@
                         let countryName = await updateColumnInGridCell(fieldName, grid, columnName, countryFieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById);
                         return countryName;
                     },
-
-                    // async updateColumnInGridCellForBCN (grid, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell) {
-                    //     let fieldName = 'im360_name';
-                        
-                    //     // BCN:
-                    //     columnName = "Ingram BCN#";
-                    //     let bcnFieldId = isStage ? 21077919616660 : 9213900294676;
-                    //     await updateColumnInGridCell(fieldName, grid, columnName, bcnFieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById);
-                    // },
 
                     async updateColumnInGridCellForEmail (grid, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell) {
                         let fieldName = 'im360_name';
