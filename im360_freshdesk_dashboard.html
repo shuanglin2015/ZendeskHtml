@@ -34,6 +34,7 @@
 
             let Global_country_name = '';
             let Global_im360_bcn = '';
+            let Global_im360_armid = '';
 
             let app = new Vue({
                 el: '#app',
@@ -86,8 +87,11 @@
                         } else {
                             isStage = false;
                         }
+                        // await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second to ensure the localStorage variables are updated
+
                         Global_country_name = localStorage.getItem('zendesk_country_name');
                         Global_im360_bcn = localStorage.getItem('zendesk_im360_bcn');
+                        Global_im360_armid = localStorage.getItem('zendesk_im360_armid');
                         
                         this.generateDatagrid(this.getTickets);
 
@@ -295,7 +299,7 @@
                             const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${Global_im360_bcn}%' />`;
                             bcnFilters += defaultFilter;
 
-                            // if the BCN is not in the Zendesk ticket (only contains CMP ID), when the user type BCN in the IM360 global search box to find the Account, then check the tickets, the tickets will be filtered by BCN or CMP ID, so it'll find that ticket.
+                            // if the BCN is not in the Zendesk ticket (only contains CMP ID), when the user type BCN in the IM360 global search box to find the Account, then check the tickets, the tickets will be filtered by BCN or CMP ID, so it'll find that ticket by the account searched.
 
                             // Error: zendeskBCN is not defined:
                             // const validBcn = zendeskBCN.replace(/-/g, "");
@@ -305,6 +309,15 @@
                             //     let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
                             //     bcnFilters += possibleFilter;
                             // });
+                        }
+
+                        if (Global_im360_armid) {
+
+                            // CMP ID logic
+                            const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${Global_im360_armid}%' />`;
+                            bcnFilters += defaultFilter;
+
+                            // if the CMP ID is not in the Zendesk ticket (only contains BCN), when the user type CMP ID in the IM360 global search box to find the Account, then check the tickets, the tickets will be filtered by CMP ID, so it'll find that ticket by the account searched.
                         }
 
                         let bcnFiltersResult = bcnFilters ? `<filter type="or"> ${bcnFilters}</filter>` : '';
@@ -503,7 +516,7 @@
                             columnFixing: { enabled: true },
                             filterRow: { visible: true },
                             headerFilter: { visible: true },
-                            editing: { mode: `form`, allowUpdating: false, allowEditing: false, allowAdding: false, allowDeleting: false },
+                            editing: { allowUpdating: false, allowEditing: false, allowAdding: false, allowDeleting: false },
                             export: { enabled: true, fileName: `item` },
                             grouping: { contextMenuEnabled: true },
                             groupPanel: { visible: true },
@@ -511,7 +524,7 @@
                             loadPanel: { height: 100, width: 200, text: `Loading Data...` },
                             pager: { showInfo: true, infoText: `Page {0}. Total: {1} ({2} items)`, showPageSizeSelector: true, allowedPageSizes: [5, 15, 30] },
                             paging: { pageSize: 15, pageIndex: 0 },
-                            searchPanel: { visible: true, width: 240, placeholder: `Search...` },
+                            searchPanel: { visible: false, width: 240, placeholder: `Search...` },
                             selection: { mode: `single` },
                             sorting: { mode: `multiple` },
                             showBorders: true,
@@ -527,6 +540,8 @@
 
                                 if (Global_ticketSearchFromZendeskAPI) {
                                     Global_ticketSearchFromZendeskAPI = false;
+                                    //e.element.hide();
+
                                     let countryValue = await updateColumnInGridCellForCountry(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
 
                                     let countryValid = false;
@@ -539,69 +554,61 @@
                                         });
                                     }
                                     if (countryValue && !countryValid) {
-                                        const grid = $("#gridContainer").dxDataGrid("instance");
-                                        const store = grid.getDataSource().store();
+                                        // const grid = $("#gridContainer").dxDataGrid("instance");
+                                        // const store = grid.getDataSource().store();
 
                                         let keyStr = '';
-                                        const firstRow = grid.getVisibleRows()[0];
+                                        const firstRow = e.component.getVisibleRows()[0];
                                         if (firstRow) {
                                             const key = firstRow.key;
                                             keyStr = key && key.toString();
-
-                                            store.push([{
-                                                type: "update",
-                                                key: firstRow.key,
-                                                data: {}
-                                            }]);
                                         }
 
-                                        // update all cells to empty string:
-                                        grid.editCell(0, 'Ticket Id');
-                                        grid.cellValue(0, 'Ticket Id', '');
-                                        grid.closeEditCell();
+                                        setTimeout(() => {
+                                            const grid = e.component;
+                                            const row = 0;
 
-                                        grid.editCell(0, 'Country');
-                                        grid.cellValue(0, 'Country', '');
-                                        grid.closeEditCell();
+                                            grid.editCell(row, "Country");
 
-                                        grid.editCell(0, 'Ingram BCN#');
-                                        grid.cellValue(0, 'Ingram BCN#', '');
-                                        grid.closeEditCell();
+                                            grid.cellValue(row, "Ticket Id", "");
+                                            grid.cellValue(row, "Country", "");
+                                            grid.cellValue(row, "Ingram BCN#", "");
+                                            grid.cellValue(row, "Partner email address", "");
+                                            grid.cellValue(row, "Reseller Name", "");
+                                            grid.cellValue(row, "Ticket subject line", "");
+                                            grid.cellValue(row, "Status", "");
+                                            grid.cellValue(row, "Domain", "");
+                                            grid.cellValue(row, "Priority", "");
 
-                                        grid.editCell(0, 'Partner email address');
-                                        grid.cellValue(0, 'Partner email address', '');
-                                        grid.closeEditCell();
+                                            const mode = e.component.option("editing.mode"); // 'cell' | 'row' | 'batch' | 'popup' | 'form'
+                                            console.log(mode);  // row
 
-                                        grid.editCell(0, 'Reseller Name');
-                                        grid.cellValue(0, 'Reseller Name', '');
-                                        grid.closeEditCell();
+                                            grid.closeEditRow(row);
 
-                                        grid.editCell(0, 'Ticket subject line');
-                                        grid.cellValue(0, 'Ticket subject line', '');
-                                        grid.closeEditCell();
+                                            grid.closeEditCell();
+                                            // persist changes (if needed)
+                                            grid.saveEditData();
 
-                                        grid.editCell(0, 'Status');
-                                        grid.cellValue(0, 'Status', '');
-                                        grid.closeEditCell();
+                                            grid.saveEditData(); // commits and closes popup/form
+                                            // or
+                                            //grid.cancelEditData(); // cancels and closes popup/form
 
-
-                                        grid.editCell(0, 'Domain');
-                                        grid.cellValue(0, 'Domain', '');
-                                        grid.closeEditCell();
+                                        }, 0);
                                         
-                                        grid.editCell(0, 'Priority');
-                                        grid.cellValue(0, 'Priority', '');
-                                        grid.closeEditCell();
-
                                         this.hideLoadingPage && this.hideLoadingPage();
 
                                         let msg = `The country is "${countryValue}" for the ticket with ticket id "${keyStr}", does not belong to this region`;
-                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg });
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg }).then(
+                                            function () { 
+                                                //e.element.show();
+                                            }
+                                        );
 
                                     } else {
                                         await updateColumnInGridCellForEmail(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
                                         await updateColumnInGridCellForReseller(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
                                         await updateColumnInGridCellForDomain(e.component, Global_zendeskBaseUrl, Global_funcCodeForJsonById, updateColumnInGridCell);
+                                        //e.element.show();
                                     }
                                 }
 
@@ -679,6 +686,7 @@
                                         let fullUrl = `${url}/main.aspx?appid=${appId}&forceUCI=1&pagetype=entityrecord&etn=account&id=${accountId}&formid=${formId}&extraqs=${fieldName}%3D${tabName}_${ticketId}_${selectedResellerId}`;
                                         console.log(`Zendesk Dashboard - fullUrl: ${fullUrl}`);
                                         localStorage.setItem('zendesk_ticketId', ticketId);
+                                        //await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second to ensure the localStorage variable is updated
                                         window.open(fullUrl, '_blank');
                                     } else {
                                         Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Cannot get Account Id by Country and BCN. Unable to load account details. [ticket id: ${ticketId}]` });

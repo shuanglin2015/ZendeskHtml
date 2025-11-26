@@ -213,7 +213,7 @@
                         });
                     }
                 });
-                if (!Global_country_name || !Global_im360_bcn){
+                // if (!Global_country_name || !Global_im360_bcn){
                     let account = await this.getAccountCountryAndBCN();
                     if (account) {
                         Global_country_name = account.CountryName;
@@ -223,10 +223,13 @@
                         Global_im360_armid = Global_im360_armid ? Global_im360_armid.replace(/'/g, "") : '';
                         Global_originalResellerCountry = Global_country_name;
                         Global_originalResellerBCN = Global_im360_bcn;
+                    } else {
+                        console.error(`${this.pageTitle} - account is null in mounted()`);
                     }
-                }
+                // }
                 console.log(`${this.pageTitle} - Global_country_name value in mounted(): ${Global_country_name}`);
                 console.log(`${this.pageTitle} - Global_im360_bcn value in mounted(): ${Global_im360_bcn}`);
+                console.log(`${this.pageTitle} - Global_im360_armid value in mounted(): ${Global_im360_armid}`);
                 this.showLoadingPage && this.showLoadingPage();
                 this.startTime = Date.now();
 
@@ -303,6 +306,13 @@
                             this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey,this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                             }
+                            if (this.record && this.record.error === 'RecordNotFound') {
+                                this.notFoundMessage = `Ticket ID ${selectedTicketId} not found from Zendesk API.`;
+                                console.error(`${this.pageTitle} - ${this.notFoundMessage}`);
+                                this.record = null;
+                                this.hideLoadingPage && this.hideLoadingPage();
+                                return;
+                            }
                             let id = this.record && this.record['id'];
                             let subjectGet = this.record && this.record['subject'];
                             this.selectedIdAndSubject = id && subjectGet ? `${id}.${subjectGet}` : '';
@@ -331,6 +341,12 @@
                             let ticketId = getTicketId(selected);
                             this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
+                            if (this.record && this.record.error === 'RecordNotFound') {
+                                this.notFoundMessage = `Tried again, but the ticket id ${selectedTicketId} still not found from Zendesk API.`;
+                                this.record = null;
+                                this.hideLoadingPage && this.hideLoadingPage();
+                                return;
+                            }
                             let id = this.record && this.record['id'];
                             let subjectGet = this.record && this.record['subject'];
                             this.selectedIdAndSubject = id && subjectGet ? `${id}.${subjectGet}` : '';
@@ -727,9 +743,14 @@
                         let url = window.location.protocol + "//" + window.location.host + "/";
                         let fullUrl = `${url}/main.aspx?appid=${this.Global_appId}&pagetype=dashboard&id=${this.Global_dashboardId}&type=system`;
                         console.log(`${this.pageTitle} - fullUrl: ${fullUrl}`);
+
                         localStorage.setItem('zendesk_country_name', Global_country_name);
+                        localStorage.setItem('zendesk_im360_bcn', Global_im360_bcn);
+                        localStorage.setItem('zendesk_im360_armid', Global_im360_armid);
+
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second to ensure the localStorage variables are updated
                         
-                        let bcn = Global_ZendeskBCN ? Global_ZendeskBCN : this.Global_ZendeskBCN;
+                        //let bcn = Global_ZendeskBCN ? Global_ZendeskBCN : this.Global_ZendeskBCN;
                         // let zendeskBcn = Global_ZendeskBCN ? Global_ZendeskBCN : this.Global_ZendeskBCN;
                         // if (bcn && bcn.indexOf('|') > 0) {
                         //     bcn = bcn.split("|")[1].trim();
@@ -769,12 +790,6 @@
                             "na", "NA"
                         */
 
-
-
-
-
-                        // TODO: the following line could be wrong: bcn is not im360_bcn, it's Zendesk BCN
-                        localStorage.setItem('zendesk_im360_bcn', bcn);
                         this.hideLoadingPage && this.hideLoadingPage();
 
                         if (this.record) {
