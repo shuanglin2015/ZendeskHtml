@@ -33,7 +33,7 @@
                 {{notFoundMessage}}
             </div>
 
-            <div v-if="record && record.subject">
+            <div v-if="record && record.id">
                 <div id="viewerHead">
                     <h3>#{{record.id}} {{record.subject}}</h3>
                     <p v-if="record.company && record.company.name">
@@ -94,7 +94,7 @@
 
             </div>
 
-            <div v-if="record && record.subject" class="conversation">
+            <div v-if="record && record.id" class="conversation">
                 <div v-if="record.conversations && record.conversations[0]">
                     <ul>
                         <li v-for="item in record.conversations" :key="item.id">
@@ -147,6 +147,7 @@
         let Global_dashboardId = '';
         let Global_originalResellerCountry = '';
         let Global_originalResellerBCN = '';
+        let Global_originalResellerCMPID = '';
 
         let Global_country_name = '';
         let Global_im360_bcn = '';
@@ -223,6 +224,7 @@
                         Global_im360_armid = Global_im360_armid ? Global_im360_armid.replace(/'/g, "") : '';
                         Global_originalResellerCountry = Global_country_name;
                         Global_originalResellerBCN = Global_im360_bcn;
+                        Global_originalResellerCMPID = Global_im360_armid;
                     } else {
                         console.error(`${this.pageTitle} - account is null in mounted()`);
                     }
@@ -284,44 +286,51 @@
                         this.selectOptions = selectOptions;
                         this.items = items;
                         let ticketId = getTicketId(selected);
+
+                        let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
+                        let userName = userSettings && userSettings.userName;
+
+                        let ticketIdForAPI = ticketId;
                         // if the ticket is not synced from Zendesk to IM360, need to retrieve it from Zendesk:
                         if (selectedTicketId && (ticketId != selectedTicketId)) {
                             console.log(`Zendesk - ticket id from IM360 is: ${ticketId}, but the ticket id from localStorage is: ${selectedTicketId}`);
-                            this.showLoadingPage && this.showLoadingPage();
-                            this.selectedIdAndSubject = selectedTicketId;
-                            let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
-                            let userName = userSettings && userSettings.userName;
-                            let ticket = await this.getTicket(this.zendeskBaseUrl, this.funcCode, selectedTicketId, userName, this.showLoadingPage, this.hideLoadingPage, 
+                            ticketIdForAPI = selectedTicketId;
+                        }
+                        
+                        this.showLoadingPage && this.showLoadingPage();
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketIdForAPI, userName, this.showLoadingPage, this.hideLoadingPage, 
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
+                        this.hideLoadingPage && this.hideLoadingPage();
 
-                            this.record = ticket;
-                            let idAndSubject = `${ticketId}.${ticket && ticket.subject}`;
+                        if (this.record && this.record.error === 'RecordNotFound') {
+                            this.notFoundMessage = `Ticket ID ${ticketIdForAPI} was not found in Zendesk, the cached data could be outdated. Please select another ticket or try again later.`;
+                            console.error(`${this.pageTitle} - ${this.notFoundMessage}`);
+                            // the selected ticket should not be empty when the user open the page first time:
+                            if (!this.selectedIdAndSubject && this.selectOptions && this.selectOptions.length > 0) {
+                                this.selectedIdAndSubject = this.selectOptions[0];
+                            }
+                            this.record = null;
+                            return;
+                        }
+
+                        if (selectedTicketId && (ticketId != selectedTicketId)) {
+                            let idAndSubject = `${selectedTicketId}.${(this.record && this.record.subject) ?? '-'}`;
                             if (!this.selectOptions.includes(idAndSubject)) {
                                 this.selectOptions.unshift(idAndSubject);  // add ticketId and subject as the first item of the array
                             }
-                            this.hideLoadingPage && this.hideLoadingPage();
                             // don't need to "check if the ticket id belong to this reseller"
-
-                        } else {
-                            this.record = await this.getTicket(zendeskBaseUrl, funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
-                                this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey,this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
+                        } 
+                        
+                        let id = this.record && this.record['id'];
+                        let subjectGet = this.record && this.record['subject'];
+                        this.selectedIdAndSubject = id && subjectGet ? `${id}.${subjectGet}` : `${id}.-`;
+                        
+                        if (items && items.length > 0) {
+                            this.ticketSummary = this.getTicketSummary(items);
+                            if (this.ticketSummary.length > 0) {
+                                this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
                             }
-                            if (this.record && this.record.error === 'RecordNotFound') {
-                                this.notFoundMessage = `Ticket ID ${selectedTicketId} not found from Zendesk API.`;
-                                console.error(`${this.pageTitle} - ${this.notFoundMessage}`);
-                                this.record = null;
-                                this.hideLoadingPage && this.hideLoadingPage();
-                                return;
-                            }
-                            let id = this.record && this.record['id'];
-                            let subjectGet = this.record && this.record['subject'];
-                            this.selectedIdAndSubject = id && subjectGet ? `${id}.${subjectGet}` : '';
-                            if (items && items.length > 0) {
-                                this.ticketSummary = this.getTicketSummary(items);
-                                if (this.ticketSummary.length > 0) {
-                                    this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
-                                }
-                            }
+                        }
                     }
                 } else {
                     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -349,7 +358,7 @@
                             }
                             let id = this.record && this.record['id'];
                             let subjectGet = this.record && this.record['subject'];
-                            this.selectedIdAndSubject = id && subjectGet ? `${id}.${subjectGet}` : '';
+                            this.selectedIdAndSubject = id && subjectGet ? `${id}.${subjectGet}` : `${id}.-`;
                             if (items && items.length > 0) {
                                 this.ticketSummary = this.getTicketSummary(items);
                                 if (this.ticketSummary.length > 0) {
@@ -639,6 +648,8 @@
                                 // IM360 CMP ID possible value (with single quote): '1000003522'
                                 let cmpIdWithoutSingleQuote = Global_im360_armid.replace(/'/g, "");
                                 filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${cmpIdWithoutSingleQuote}%' />`;
+
+                                // add "-" after the second digits, for example: "1000003522" -> "10-00003522"
                                 let cmpWithDash = cmpIdWithoutSingleQuote.slice(0, 2) + "-" + cmpIdWithoutSingleQuote.slice(2);
                                 filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${cmpWithDash}%' />`;
                             }
@@ -683,54 +694,54 @@
                         this.showLoadingPage && this.showLoadingPage();
                         
                         return Xrm.WebApi.retrieveMultipleRecords("im360_zendesktickets", "?fetchXml=" + fetchXml).then(
-                        function success(result) {
-                            let selected = '';
-                            let items = [];
+                            function success(result) {
+                                let selected = '';
+                                let items = [];
 
-                            if (result != null) {
-                                items = result.entities;
-                                if (items && items.length > 0) {
-                                    selected = `${items[0]['im360_ticketid']}.${items[0]['im360_name']}`;
-                                    if (selectedTicketId) {
+                                if (result != null) {
+                                    items = result.entities;
+                                    if (items && items.length > 0) {
+                                        selected = `${items[0]['im360_ticketid']}.${items[0]['im360_name']}`;
+                                        if (selectedTicketId) {
+                                            items.forEach(item => {
+                                                if(item['im360_ticketid'] && (item['im360_ticketid'].toString() == selectedTicketId)) {
+                                                    selected = `${item['im360_ticketid']}.${item['im360_name']}`;
+                                                }
+                                            });
+                                        }
+
+                                        selectOptions = [];
                                         items.forEach(item => {
-                                            if(item['im360_ticketid'] && (item['im360_ticketid'].toString() == selectedTicketId)) {
-                                                selected = `${item['im360_ticketid']}.${item['im360_name']}`;
-                                            }
+                                            selectOptions.push(`${item.im360_ticketid}.${item.im360_name}`);
                                         });
-                                    }
-
-                                    selectOptions = [];
-                                    items.forEach(item => {
-                                        selectOptions.push(`${item.im360_ticketid}.${item.im360_name}`);
-                                    });
-                                    if (selectOptions.length > 0) {
-                                        let newOption = 'View more tickets...';
-                                        if (!selectOptions.includes(newOption)) {
-                                            selectOptions.push(newOption);
+                                        if (selectOptions.length > 0) {
+                                            let newOption = 'View more tickets...';
+                                            if (!selectOptions.includes(newOption)) {
+                                                selectOptions.push(newOption);
+                                            }
                                         }
                                     }
+                                } else {
+                                    console.error(`${pageTitle} - Cannot get Zendesk tickets, the fetchXml is: ${fetchXml}`);
+                                    return null;
                                 }
-                            } else {
-                                console.error(`${pageTitle} - Cannot get Zendesk tickets, the fetchXml is: ${fetchXml}`);
+
+                                let finalResult = {
+                                    selected,
+                                    selectOptions,
+                                    items
+                                }
+                                hideLoadingPage && hideLoadingPage();
+                                this.hideLoadingPage && this.hideLoadingPage();
+                                return finalResult;
+                            },
+                            function (error) {
+                                console.error(`${pageTitle} - ${error.message}`);
+                                hideLoadingPage && hideLoadingPage();
+                                this.hideLoadingPage && this.hideLoadingPage();
                                 return null;
                             }
-
-                            let finalResult = {
-                                selected,
-                                selectOptions,
-                                items
-                            }
-                            hideLoadingPage && hideLoadingPage();
-                            this.hideLoadingPage && this.hideLoadingPage();
-                            return finalResult;
-                        },
-                        function (error) {
-                            console.error(`${pageTitle} - ${error.message}`);
-                            hideLoadingPage && hideLoadingPage();
-                            this.hideLoadingPage && this.hideLoadingPage();
-                            return null;
-                        }
-                    );
+                        );
                     }
                     return results;
                 },
@@ -811,6 +822,13 @@
                         this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                             this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                         this.hideLoadingPage && this.hideLoadingPage();
+                        
+                        if (this.record && this.record.error === 'RecordNotFound') {
+                            this.notFoundMessage = `Ticket ID ${ticketId} was not found in Zendesk, the cached data could be outdated. Please select another ticket or try again later.`;
+                            console.error(`Zendesk - ${this.notFoundMessage}`);
+                            this.record = null;
+                            return;
+                        }
                     }
                 },
 
@@ -846,9 +864,10 @@
                             // }
                             // BCN logic
                             let resellerBCN = Global_originalResellerBCN;
+                            let resellerCMPID = Global_originalResellerCMPID;
                             let sameBCN = false;
 
-                            //sameBCN = ticketBCN == resellerBCN;
+                            //sameBCN = "ticketBCN == resellerBCN";
                             if (!ticketBCN || ticketBCN.toLowerCase() === 'na' || ticketBCN === '.' || ticketBCN.toLowerCase() === 'x' || !resellerBCN) {
                                 sameBCN = false;
                             } else {
@@ -861,8 +880,22 @@
                                 });
                             }
 
+                            let sameCMPID = false;
+                            //sameCMPID = "ticketBCN == resellerCMPID";
+                            if (!ticketBCN || ticketBCN.toLowerCase() === 'na' || ticketBCN === '.' || ticketBCN.toLowerCase() === 'x' || !resellerBCN) {
+                                sameCMPID = false;
+                            } else {
+                                const validCMPID = ticketBCN.replace(/-/g, "");
+                                const numbersStrArr = validCMPID.match(/\d+/g) || [];
+                                numbersStrArr.forEach(cmpIdItem => {
+                                    if (cmpIdItem.trim() == resellerCMPID.trim() || `'${cmpIdItem.trim()}'` == resellerCMPID.trim()) {
+                                        sameCMPID = true;
+                                    }
+                                });
+                            }
+
                             let sameReseller = ticketCountry == resellerCountry;
-                            let belongToReseller = (sameReseller && sameBCN);
+                            let belongToReseller = (sameReseller && (sameBCN || sameCMPID));
                             if (belongToReseller && ticketCountry != '-' && ticketBCN != '-') {
                                 this.record = ticket;
                                 let idAndSubject = `${ticketId}.${ticket.subject}`;
@@ -1483,7 +1516,7 @@
         }
 
         .min-col-bcn {
-            min-width: 152px;
+            min-width: 153px;
         }
     </style>
 
