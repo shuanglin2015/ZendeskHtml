@@ -202,7 +202,8 @@
                                     if (result != null) {
                                         let finalResult = null;
                                         let totalResults = 0;
-                                        result.entities.forEach(accountEntity => {
+                                        if (result.entities) {
+                                            result.entities.forEach(accountEntity => {
                                             let accountBCN = accountEntity.im360_bcn;
                                             let bcnValid = false;
                                             if (accountBCN) {
@@ -235,7 +236,7 @@
                                                 totalResults += 1;
                                             }
                                         });
-
+                                        }
                                         if (totalResults > 1) {
                                             console.warn(`Zendesk Dashboard - There are ${totalResults} Accounts found for the Country: ${zendeskCountryName} and zendeskBCN: ${zendeskBCN}. Please check if there are duplicate Accounts in CRM. fetchXml: ${fetchXml}`);
                                         }
