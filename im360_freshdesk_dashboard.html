@@ -382,8 +382,12 @@
 
                             if (result != null) {
                                 let items = result.entities;
-                                if (items && items.length > 0) {
-                                    items.forEach(item => {
+                                const filteredItemsBCN = filterExactBCNResults(items, Global_im360_bcn);
+                                const filteredItemsCMPID = filterExactBCNResults(items, Global_im360_armid);
+                                filteredItems = [...filteredItemsBCN, ...filteredItemsCMPID];
+
+                                if (filteredItems && filteredItems.length > 0) {
+                                    filteredItems.forEach(item => {
                                         if (item && item.im360_name) {
                                             let itemNew = {
                                                 'TicketId': item.im360_ticketid,
@@ -817,8 +821,27 @@
                 }
                 
             });
-        </script>
 
+            const extractBCNTokens = (value) => {
+                if (!value) return [];
+
+                // Extract tokens: letters+digits with optional hyphens, ≥4 characters
+                return value
+                    .match(/[A-Za-z0-9][A-Za-z0-9-]{3,}/g)          // find tokens
+                    ?.map(x => x.replace(/-/g, "").toUpperCase())   // normalize
+                    || [];
+            };
+
+            const filterExactBCNResults = (records, bcnRaw) => {
+                const validTokens = extractBCNTokens(bcnRaw);
+
+                return records.filter(rec => {
+                    const fieldValue = rec["im360_ingrambcn"];
+                    const tokens = extractBCNTokens(fieldValue);
+                    return tokens.some(t => validTokens.includes(t));
+                });
+            };
+        </script>
 
         <style scoped>
             body {

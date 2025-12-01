@@ -697,13 +697,19 @@
                             function success(result) {
                                 let selected = '';
                                 let items = [];
+                                let filteredItems = [];
 
                                 if (result != null) {
                                     items = result.entities;
-                                    if (items && items.length > 0) {
-                                        selected = `${items[0]['im360_ticketid']}.${items[0]['im360_name']}`;
+
+                                    const filteredItemsBCN = filterExactBCNResults(items, Global_im360_bcn);
+                                    const filteredItemsCMPID = filterExactBCNResults(items, Global_im360_armid);
+                                    filteredItems = [...filteredItemsBCN, ...filteredItemsCMPID];
+
+                                    if (filteredItems && filteredItems.length > 0) {
+                                        selected = `${filteredItems[0]['im360_ticketid']}.${filteredItems[0]['im360_name']}`;
                                         if (selectedTicketId) {
-                                            items.forEach(item => {
+                                            filteredItems.forEach(item => {
                                                 if(item['im360_ticketid'] && (item['im360_ticketid'].toString() == selectedTicketId)) {
                                                     selected = `${item['im360_ticketid']}.${item['im360_name']}`;
                                                 }
@@ -711,7 +717,7 @@
                                         }
 
                                         selectOptions = [];
-                                        items.forEach(item => {
+                                        filteredItems.forEach(item => {
                                             selectOptions.push(`${item.im360_ticketid}.${item.im360_name}`);
                                         });
                                         if (selectOptions.length > 0) {
@@ -729,7 +735,7 @@
                                 let finalResult = {
                                     selected,
                                     selectOptions,
-                                    items
+                                    filteredItems
                                 }
                                 hideLoadingPage && hideLoadingPage();
                                 this.hideLoadingPage && this.hideLoadingPage();
@@ -1251,16 +1257,10 @@
             }
         });
 
-        const getUTC = (strDateParam) => {
-            const dateParam = new Date(strDateParam);
-            const result = Date.UTC(dateParam.getFullYear(), dateParam.getMonth(), dateParam.getDate(), dateParam.getHours());
-            return result;
-        }
-
         const getTicketId = (selectedIdAndSubject) => {
             const ticketId = (selectedIdAndSubject && selectedIdAndSubject.indexOf('.') > 0) ? selectedIdAndSubject.substring(0, selectedIdAndSubject.indexOf('.')) : selectedIdAndSubject;
             return ticketId;
-        }
+        };
 
         const groupBy = (key) => {
             return function group(array) {
@@ -1270,15 +1270,27 @@
                     return acc;
                 }, {});
             };
-        }
+        };
 
-        const asyncForEach = async (array, callback) => {
-            if (array && callback) {
-                for (let index = 0; index < array.length; index++) {
-                    await callback(array[index], index, array);
-                }
-            }
-        }
+        const extractBCNTokens = (value) => {
+            if (!value) return [];
+
+            // Extract tokens: letters+digits with optional hyphens, ≥4 characters
+            return value
+                .match(/[A-Za-z0-9][A-Za-z0-9-]{3,}/g)          // find tokens
+                ?.map(x => x.replace(/-/g, "").toUpperCase())   // normalize
+                || [];
+        };
+
+        const filterExactBCNResults = (records, bcnRaw) => {
+            const validTokens = extractBCNTokens(bcnRaw);
+
+            return records.filter(rec => {
+                const fieldValue = rec["im360_ingrambcn"];
+                const tokens = extractBCNTokens(fieldValue);
+                return tokens.some(t => validTokens.includes(t));
+            });
+        };
     </script>
 
     <style scoped>
