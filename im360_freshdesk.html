@@ -285,15 +285,7 @@
                 if (this.zendeskBaseUrl && Global_country_name && Global_im360_bcn) {
                     let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                     if (tickets) {
-                        const data = [
-                        { month: "Jun'25", value: 22 },
-                        { month: "Jul'25", value: 17 },
-                        { month: "Aug'25", value: 25 },
-                        { month: "Sep'25", value: 0 },
-                        { month: "Oct'25", value: 31 },
-                        { month: "Nov'25", value: 42 },
-                        { month: "Dec'25", value: 9 },
-                        ];
+                        const data = this.getTicketSummaryForChart(tickets.items);
 
                         $("#chart").dxChart({
                             dataSource: data,
@@ -346,7 +338,7 @@
                         }
                         
                         this.showLoadingPage && this.showLoadingPage();
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketIdForAPI, userName, this.showLoadingPage, this.hideLoadingPage, 
+                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketIdForAPI, userName, this.showLoadingPage, this.hideLoadingPage,
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                         this.hideLoadingPage && this.hideLoadingPage();
 
@@ -1256,6 +1248,45 @@
                     }
                 },
 
+                getTicketSummaryForChart(items) {
+                    let result = [];
+                    const ticketSummaryParam = [];
+                    try {
+                        items.forEach(item => {
+                            const createdAt = new Date(item.im360_created_at);
+                            const strMonth = (createdAt.getMonth() + 1).toString();
+                            const fullMonth = strMonth.length === 1 ? `0${strMonth}` : `${strMonth}`;
+                            let yearAndMonth = `${createdAt.getFullYear()}-${fullMonth}`;
+
+                            const date = new Date(yearAndMonth + "-01");
+                            const month = new Intl.DateTimeFormat("en-US", { month: "short" }).format(date);
+                            const year = date.getFullYear().toString().slice(-2);
+                            yearAndMonth = `${month}'${year}`;
+
+                            const ticketObj = {
+                                yearAndMonth,
+                            }
+                            ticketSummaryParam.push(ticketObj);
+                        });
+                    } catch (err) {
+                        console.error(`${this.pageTitle} - Zendesk getTicketSummaryForChart error`);
+                        this.hideLoadingPage && this.hideLoadingPage();
+                    }
+
+                    if (ticketSummaryParam.length > 0) {
+                        const groupByMonth = groupBy("yearAndMonth");
+                        const groupedTickets = groupByMonth(ticketSummaryParam);
+                        Object.keys(groupedTickets).forEach(key => {
+                            result.push({
+                                month: key,
+                                value: groupedTickets[key]
+                            });
+                        });
+                    }
+                    result = fillMissingMonths(result, 0);
+                    return result;
+                },
+
                 getTicketSummary(items) {
                     const result = [];
                     try {
@@ -1347,6 +1378,54 @@
                 return tokens.some(t => validTokens.includes(t));
             });
         };
+
+        const fillMissingMonths = (items, defaultValue = 0) => {
+            if (!items || items.length === 0) {
+                return items;
+            }
+            const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+            const parse = (label) => {
+                const [m, y] = label.split("'");
+                const month = monthNames.indexOf(m);
+                const year = 2000 + parseInt(y);
+                return { year, month };
+            };
+
+            const format = ({ year, month }) =>
+                `${monthNames[month]}'${String(year).slice(-2)}`;
+
+            // Convert to sorted date list
+            const sorted = [...items].sort((a, b) => {
+                const da = parse(a.month);
+                const db = parse(b.month);
+                return da.year === db.year ? da.month - db.month : da.year - db.year;
+            });
+
+            const results = [];
+            let current = parse(sorted[0].month);
+            const end = parse(sorted[sorted.length - 1].month);
+
+            while (current.year < end.year || (current.year === end.year && current.month <= end.month)) {
+                const currentLabel = format(current);
+                const found = sorted.find(i => i.month === currentLabel);
+
+                if (found) {
+                results.push(found);
+                } else {
+                results.push({ month: currentLabel, value: defaultValue });
+                }
+
+                // Move to next month
+                current.month++;
+                if (current.month > 11) {
+                current.month = 0;
+                current.year++;
+                }
+            }
+
+            return results;
+            };
     </script>
 
     <style scoped>
