@@ -1258,7 +1258,7 @@
                             const fullMonth = strMonth.length === 1 ? `0${strMonth}` : `${strMonth}`;
                             let yearAndMonth = `${createdAt.getFullYear()}-${fullMonth}`;
 
-                            const date = new Date(yearAndMonth + "-01");
+                            const date = new Date(yearAndMonth + "-15");
                             const month = new Intl.DateTimeFormat("en-US", { month: "short" }).format(date);
                             const year = date.getFullYear().toString().slice(-2);
                             yearAndMonth = `${month}'${year}`;
