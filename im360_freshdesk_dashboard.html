@@ -833,6 +833,9 @@
             };
 
             const filterExactBCNResults = (records, bcnRaw) => {
+                if (!bcnRaw || bcnRaw.trim() === "") {
+                    return records;
+                }
                 const validTokens = extractBCNTokens(bcnRaw);
 
                 return records.filter(rec => {
