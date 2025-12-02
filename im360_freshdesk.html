@@ -9,9 +9,12 @@
     <script src="https://unpkg.com/jquery@3.1.1/dist/jquery.js"></script>
     <script src="https://unpkg.com/vue-select@3.0.0"></script>
     <link rel="stylesheet" href="https://unpkg.com/vue-select@3.0.0/dist/vue-select.css">
+    <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/20.2.7/css/dx.common.css"/>
+    <link rel="stylesheet" href="https://cdn3.devexpress.com/jslib/20.2.7/css/dx.light.css"/>
 
     <link rel="stylesheet" href="https://unpkg.com/element-ui@2.2.0/lib/theme-chalk/index.css">
     <script src="https://unpkg.com/element-ui@2.2.0/lib/index.js"></script>
+    <script src="https://cdn3.devexpress.com/jslib/20.2.7/js/dx.viz.js"></script>
 
 </head>
 
@@ -22,6 +25,8 @@
                 <img src="im360_Loading.gif" />
             </div>
         </div>
+
+        <div id="chart" style="width:1200px; height:200px; margin-left:20px;"></div>
 
         <div>
             <div class="select-box">
@@ -280,6 +285,44 @@
                 if (this.zendeskBaseUrl && Global_country_name && Global_im360_bcn) {
                     let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                     if (tickets) {
+                        const data = [
+                        { month: "Jun'25", value: 22 },
+                        { month: "Jul'25", value: 17 },
+                        { month: "Aug'25", value: 25 },
+                        { month: "Sep'25", value: 0 },
+                        { month: "Oct'25", value: 31 },
+                        { month: "Nov'25", value: 42 },
+                        { month: "Dec'25", value: 9 },
+                        ];
+
+                        $("#chart").dxChart({
+                            dataSource: data,
+                            series: {
+                                argumentField: "month",
+                                valueField: "value",
+                                name: "Tickets",
+                                type: "line",   // "line", "bar", "spline", "stackedBar", etc.
+                                color: "#007bff"
+                            },
+                            legend: {
+                                visible: true,
+                                position: "bottom"
+                            },
+                            tooltip: {
+                                enabled: true,
+                                customizeTooltip: function(info) {
+                                    return { text: `${info.argument}: ${info.value}` };
+                                }
+                            },
+                            // argumentAxis: {
+                            //     title: { text: "Month and year" }
+                            // },
+                            valueAxis: {
+                                title: { text: "Tickets" }
+                            },
+                            title: "Monthly ticket volume trend"
+                        });
+
                         // Question: is it possible for the ticketId to be null if the "tickets" is not null? - it's not possible
                         const {selected, selectOptions, items} = tickets;
                         this.selected = selected;
@@ -1490,6 +1533,8 @@
 
         .select-box {
             margin-right: 220px;
+            margin-left:20px;
+            margin-top:20px;
         }
 
         .expand-button {
