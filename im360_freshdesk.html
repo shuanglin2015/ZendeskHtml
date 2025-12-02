@@ -704,7 +704,12 @@
 
                                     const filteredItemsBCN = filterExactBCNResults(items, Global_im360_bcn);
                                     const filteredItemsCMPID = filterExactBCNResults(items, Global_im360_armid);
-                                    filteredItems = [...filteredItemsBCN, ...filteredItemsCMPID];
+                                    const combinedItems = [...filteredItemsBCN, ...filteredItemsCMPID];
+
+                                    // Remove duplicates based on 'im360_ticketid'
+                                    filteredItems = combinedItems.filter((item, index, self) =>
+                                        index === self.findIndex((t) => t.im360_ticketid === item.im360_ticketid)
+                                    );
 
                                     if (filteredItems && filteredItems.length > 0) {
                                         selected = `${filteredItems[0]['im360_ticketid']}.${filteredItems[0]['im360_name']}`;

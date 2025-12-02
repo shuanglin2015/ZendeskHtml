@@ -384,7 +384,12 @@
                                 let items = result.entities;
                                 const filteredItemsBCN = filterExactBCNResults(items, Global_im360_bcn);
                                 const filteredItemsCMPID = filterExactBCNResults(items, Global_im360_armid);
-                                filteredItems = [...filteredItemsBCN, ...filteredItemsCMPID];
+                                const combinedItems = [...filteredItemsBCN, ...filteredItemsCMPID];
+
+                                // Remove duplicates based on 'im360_ticketid'
+                                const filteredItems = combinedItems.filter((item, index, self) =>
+                                    index === self.findIndex((t) => t.im360_ticketid === item.im360_ticketid)
+                                );
 
                                 if (filteredItems && filteredItems.length > 0) {
                                     filteredItems.forEach(item => {
