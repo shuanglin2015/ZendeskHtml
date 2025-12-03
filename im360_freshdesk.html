@@ -20,7 +20,7 @@
 
 <body>
     <div id="app">
-        <div v-if="showLoading" id="loading">
+        <div v-show="showLoading" id="loading">
             <div id="loading-content">
                 <img src="im360_Loading.gif" />
             </div>
@@ -123,25 +123,6 @@
                 </div>
             </div>
 
-            <div v-if="!notFoundMessage" class="collapse-ticket-summary">
-                <el-row>
-                    <el-collapse>
-                        <el-collapse accordion>
-                            <el-collapse-item>
-                                <template slot="title">
-                                    Summary Of Tickets
-                                    <el-button class="more-btn" type="text">Expand / Collapse</el-button>
-                                </template>
-
-                                <div>
-                                    Total tickets group by month:
-                                </div>
-                                <div style="margin-left: 20px;" v-html="groupByMonthTickets"></div>
-                            </el-collapse-item>
-                        </el-collapse>
-                </el-row>
-            </div>
-
         </div>
     </div>
 
@@ -199,10 +180,6 @@
                 showLoading: true,
                 startTime: Date.now(),
                 notFoundMessage: '',
-                ticketSummary: [],
-                groupByMonthTickets: '',
-                groupByQueueTickets: '',
-                inputTicketId: '',
             },
             async mounted() {
                 let userSettings = Xrm && Xrm.Utility && Xrm.Utility.getGlobalContext() && Xrm.Utility.getGlobalContext().userSettings;
@@ -367,12 +344,8 @@
                         let id = this.record && this.record['id'];
                         let subjectGet = this.record && this.record['subject'];
                         this.selectedIdAndSubject = id && subjectGet ? `${id}.${subjectGet}` : `${id}.-`;
-                        
-                        if (items && items.length > 0) {
-                            this.ticketSummary = this.getTicketSummary(items);
-                            if (this.ticketSummary.length > 0) {
-                                this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
-                            }
+                        if (!id) {
+                            this.selectedIdAndSubject = '';
                         }
                     }
                 } else {
@@ -402,11 +375,8 @@
                             let id = this.record && this.record['id'];
                             let subjectGet = this.record && this.record['subject'];
                             this.selectedIdAndSubject = id && subjectGet ? `${id}.${subjectGet}` : `${id}.-`;
-                            if (items && items.length > 0) {
-                                this.ticketSummary = this.getTicketSummary(items);
-                                if (this.ticketSummary.length > 0) {
-                                    this.groupByMonthTickets = this.getGroupByMonthTickets(this.ticketSummary);
-                                }
+                            if (!id) {
+                                this.selectedIdAndSubject = '';
                             }
                         }
                     } else {
@@ -1291,56 +1261,12 @@
                     return result;
                 },
 
-                getTicketSummary(items) {
-                    const result = [];
-                    try {
-                        items.forEach(item => {
-                            const createdAt = new Date(item.im360_created_at);
-                            const strMonth = (createdAt.getMonth() + 1).toString();
-                            const fullMonth = strMonth.length === 1 ? `0${strMonth}` : `${strMonth}`;
-                            const yearAndMonth = `${createdAt.getFullYear()}-${fullMonth}`;
-                            const ticketObj = {
-                                yearAndMonth,
-                            }
-                            result.push(ticketObj);
-                        });
-                    } catch (err) {
-                        console.error(`${this.pageTitle} - Zendesk getTicketSummary error`);
-                        this.hideLoadingPage && this.hideLoadingPage();
-                    }
-                    return result;
-                },
-
-                getGroupByMonthTickets(ticketSummaryParam) {
-                    let result = '';
-                    try {
-                        const groupByMonth = groupBy("yearAndMonth");
-                        const groupedTickets = groupByMonth(ticketSummaryParam);
-                        Object.keys(groupedTickets).forEach(key => {
-                            if (result && result.length > 0) {
-                                result += '<br>';
-                            }
-                            result += key;
-                            result += ': ';
-                            result += `<b>${groupedTickets[key]}</b>`;
-                        });
-                    } catch (err) {
-                        console.error(`${this.pageTitle} - getGroupByMonthTickets error`);
-                        this.hideLoadingPage && this.hideLoadingPage();
-                    }
-                    return result;
-                },
                 async retrieveTicket() {
-                    let ticketId = this.inputTicketId;
-                    if (!ticketId) {
-                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: "Please type Ticket Id to search" });
-                    } else {
-                        this.showLoadingPage && this.showLoadingPage();
-                        this.selectedIdAndSubject = '';
-                        this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, '', this.showLoadingPage, this.hideLoadingPage, 
-                            this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
-                        this.hideLoadingPage && this.hideLoadingPage();
-                    }
+                    this.showLoadingPage && this.showLoadingPage();
+                    this.selectedIdAndSubject = '';
+                    this.record = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, '', this.showLoadingPage, this.hideLoadingPage, 
+                        this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
+                    this.hideLoadingPage && this.hideLoadingPage();
                 }
             }
         });
