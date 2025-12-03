@@ -26,7 +26,9 @@
             </div>
         </div>
 
-        <div id="chart" style="width:1200px; height:200px; margin-left:20px;"></div>
+        <div v-show="items && items.length > 0">
+            <div id="chart" style="width:1200px; height:200px; margin-left:20px;"></div>
+        </div>
 
         <div>
             <div class="select-box">
@@ -285,6 +287,7 @@
                 if (this.zendeskBaseUrl && Global_country_name && Global_im360_bcn) {
                     let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                     if (tickets) {
+                        this.items = tickets.items;
                         const data = this.getTicketSummaryForChart(tickets.items);
 
                         $("#chart").dxChart({
@@ -741,6 +744,7 @@
 
                                 if (result != null) {
                                     items = result.entities;
+                                    this.items = items;
 
                                     const filteredItemsBCN = filterExactBCNResults(items, Global_im360_bcn);
                                     const filteredItemsCMPID = filterExactBCNResults(items, Global_im360_armid);
