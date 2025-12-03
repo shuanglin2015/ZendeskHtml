@@ -26,7 +26,7 @@
             </div>
         </div>
 
-        <div v-show="items && items.length > 0">
+        <div>
             <div id="chart" style="width:1200px; height:200px; margin-left:20px;"></div>
         </div>
 
@@ -139,6 +139,7 @@
 
         let Global_country_name = '';
         let Global_im360_bcn = '';
+        let Global_chartDataSource = [];
 
         function setClientApiContext(Xrm, context, accountBCN, newnavigationtab) {
             var pageTitle = 'Zendesk';
@@ -265,42 +266,9 @@
                     let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                     if (tickets) {
                         this.items = tickets.items;
-                        const data = this.getTicketSummaryForChart(tickets.items);
+                        Global_chartDataSource = this.getTicketSummaryForChart(tickets.items);
 
-                        $("#chart").dxChart({
-                            dataSource: data,
-                            series: {
-                                argumentField: "month",
-                                valueField: "value",
-                                name: "Tickets",
-                                type: "line",   // "line", "bar", "spline", "stackedBar", etc.
-                                color: "#007bff"
-                            },
-                            legend: {
-                                visible: true,
-                                position: "bottom"
-                            },
-                            tooltip: {
-                                enabled: true,
-                                customizeTooltip: function(info) {
-                                    return { text: `${info.argument}: ${info.value}` };
-                                }
-                            },
-                            // argumentAxis: {
-                            //     title: { text: "Month and year" }
-                            // },
-                            valueAxis: {
-                                title: { text: "Tickets" }
-                            },
-                            title: {
-                                text: "Monthly ticket volume trend",
-                                font: {
-                                    size: 22
-                                }
-                            }
-                        });
-
-                        // Question: is it possible for the ticketId to be null if the "tickets" is not null? - it's not possible
+                        // it's not possible for the ticketId to be null if the "tickets" is not null
                         const {selected, selectOptions, items} = tickets;
                         this.selected = selected;
                         this.selectOptions = selectOptions;
@@ -359,6 +327,9 @@
                         this.notFoundMessage = '';
                         let tickets = await  this.getTickets(selectedTicketId, this.showLoadingPage, this.hideLoadingPage);
                         if (tickets) {
+                            this.items = tickets.items;
+                            Global_chartDataSource = this.getTicketSummaryForChart(tickets.items);
+
                             const {selected, selectOptions, items} = tickets;
                             this.selected = selected;
                             this.selectOptions = selectOptions;
@@ -384,6 +355,43 @@
                         this.hideLoadingPage && this.hideLoadingPage();
                     }
                 }
+
+                if (Global_chartDataSource.length === 0) {
+                    Global_chartDataSource = getRecentSixMonthsEmptyDataSource();
+                }
+
+                $("#chart").dxChart({
+                    dataSource: Global_chartDataSource,
+                    series: {
+                        argumentField: "month",
+                        valueField: "value",
+                        name: "Tickets",
+                        type: "line",   // "line", "bar", "spline", "stackedBar", etc.
+                        color: "#007bff"
+                    },
+                    legend: {
+                        visible: true,
+                        position: "bottom"
+                    },
+                    tooltip: {
+                        enabled: true,
+                        customizeTooltip: function(info) {
+                            return { text: `${info.argument}: ${info.value}` };
+                        }
+                    },
+                    // argumentAxis: {
+                    //     title: { text: "Month and year" }
+                    // },
+                    valueAxis: {
+                        title: { text: "Tickets" }
+                    },
+                    title: {
+                        text: "Monthly ticket volume trend",
+                        font: {
+                            size: 22
+                        }
+                    }
+                });
 
                 localStorage.setItem('zendesk_ticketId', '');   // TODO: confirm if this is the best place to put this line
 
@@ -1355,7 +1363,26 @@
             }
 
             return results;
-            };
+        };
+
+        const getRecentSixMonthsEmptyDataSource = () => {
+            const result = [];
+            const now = new Date();
+
+            for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const month = d.toLocaleString('en-US', { month: 'short' });
+                const year = d.getFullYear().toString().slice(-2); // last two digits
+
+                result.push({
+                    month: `${month}'${year}`,
+                    value: 0
+                });
+            }
+
+            return result;
+        };
+
     </script>
 
     <style scoped>
