@@ -27,10 +27,17 @@
         </div>
 
         <div>
-            <div id="chart" style="width:1200px; height:200px; margin-left:20px;"></div>
+                <div class="select-label">Monthly ticket volume trend</div>
         </div>
 
         <div>
+            <div id="chart" style="margin-left:20px; width: 1200px; height:200px;"></div>
+        </div>
+
+        <div>
+            <div>
+                <div class="select-label-ticket">Search support ticket</div>
+            </div>
             <div class="select-box">
                 <v-select ref="mySelect" v-model="selectedIdAndSubject" @input="setSelected" placeholder="Select ticket" @new="addOption"
                           :options="selectOptions" />
@@ -384,12 +391,6 @@
                     // },
                     valueAxis: {
                         title: { text: "Tickets" }
-                    },
-                    title: {
-                        text: "Monthly ticket volume trend",
-                        font: {
-                            size: 22
-                        }
                     }
                 });
 
@@ -1349,20 +1350,27 @@
                 const found = sorted.find(i => i.month === currentLabel);
 
                 if (found) {
-                results.push(found);
+                    results.push(found);
                 } else {
-                results.push({ month: currentLabel, value: defaultValue });
+                    results.push({ month: currentLabel, value: defaultValue });
                 }
 
                 // Move to next month
                 current.month++;
                 if (current.month > 11) {
-                current.month = 0;
-                current.year++;
+                    current.month = 0;
+                    current.year++;
                 }
             }
 
-            return results;
+            let finalResults = results;
+            let recentSixMonth = getRecentSixMonthsEmptyDataSource();
+            finalResults = recentSixMonth.map(item => {
+                const match = results.find(d => d.month === item.month);
+                return match ? match : item;
+            });
+
+            return finalResults;
         };
 
         const getRecentSixMonthsEmptyDataSource = () => {
@@ -1572,8 +1580,28 @@
             z-index: 100;
         }
 
+        .select-label-ticket {
+            margin-left:20px;
+            margin-top:30px;
+            margin-bottom: 20px;
+            font-family: 'Inter', sans-serif; /* replace with actual font if known */
+            font-weight: 600;
+            font-size: 18px;
+            color: #202939;
+        }
+
+        .select-label {
+            margin-left:20px;
+            margin-top:20px;
+            margin-bottom: 20px;
+            font-family: 'Inter', sans-serif; /* replace with actual font if known */
+            font-weight: 600;
+            font-size: 18px;
+            color: #202939;
+        }
+
         .select-box {
-            margin-right: 220px;
+            width: 1400px;
             margin-left:20px;
             margin-top:20px;
         }
@@ -1591,6 +1619,7 @@
         }
 
         .not-found {
+            margin-left: 20px;
             margin-top: 20px;
         }
 
