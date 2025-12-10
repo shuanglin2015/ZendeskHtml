@@ -455,14 +455,14 @@
                                         let countryName = await getValueForCountry(countryValue, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue);
                                         let countryValid = false;
                                         let activeCountries = await getActiveCountries();
-                                        if (countryName && activeCountries) {
+                                        if (countryName && countryName.trim() && activeCountries) {
                                             activeCountries.forEach(country => {
-                                                if (country && country.im360_name && country.im360_name.toLowerCase() == countryName.toLowerCase()) {
+                                                if (country && country.im360_name && country.im360_name.toLowerCase().trim() == countryName.toLowerCase().trim()) {
                                                     countryValid = true;
                                                 }
                                             });
                                         }
-                                        if (countryName && !countryValid) {
+                                        if (countryName && countryName.trim() && !countryValid) {
                                             let ticketId = item.id;
 
                                             let msg = `The country is "${countryName}" for the ticket with ticket id "${ticketId}", does not belong to this region`;
