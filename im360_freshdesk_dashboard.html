@@ -403,7 +403,8 @@
                                                 'Ticket subject line': item.im360_name ? item.im360_name : '-',
                                                 'Status': item.im360_status ? item.im360_status : '-',
                                                 'Domain': item.im360_domain ? item.im360_domain : '-',
-                                                'Priority': item.im360_priority ? item.im360_priority : '-'
+                                                'Priority': item.im360_priority ? item.im360_priority : '-',
+                                                'Platform': item.im360_ticketsubjectline === item.im360_name ? '-' : item.im360_ticketsubjectline  // use "im360_ticketsubjectline" to save Platform data
                                             };
 
                                             //console.log(`Zendesk Dashboard - item after adding more fields: ${JSON.stringify(itemNew)}`);
@@ -468,6 +469,12 @@
                                         const objDomain = item.custom_fields && item.custom_fields.find(item => item.id === domainFieldId);
                                         const domainValue = objDomain ? objDomain.value : '';
 
+                                        // XDUS-8293 - add "Platform" column
+                                        let platformFieldId = isStage ? 35415435690388 : 35228789545364;
+                                        const objPlatform = item.custom_fields && item.custom_fields.find(item => item.id === platformFieldId);
+                                        const platformValue = objPlatform ? objPlatform.value : '';
+                                        let platformName = await getValueForPlatform(platformValue, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue);
+                                        
                                         let countryName = await getValueForCountry(countryValue, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue);
                                         let countryValid = false;
                                         let activeCountries = await getActiveCountries();
@@ -487,6 +494,7 @@
                                             partnerEmailAddress = await getValueForEmail(item.requester_id, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue);
                                             resellerName = await getValueForReseller(item.organization_id, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue);
                                             domain = await getValueForDomain(domainValue, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue);
+                                            
                                             let itemNew = {
                                                 'TicketId': item.id,
                                                 'Country': countryName ? countryName : '-',
@@ -497,6 +505,7 @@
                                                 'Status': item.status ? item.status.charAt(0).toUpperCase() + item.status.slice(1) : '-',
                                                 'Domain': domain ? domain : '-',
                                                 'Priority': item.priority ? item.priority.charAt(0).toUpperCase() + item.priority.slice(1) : '-',
+                                                'Platform': platformName ? platformName : '-'
                                             };
                                             results.push(itemNew);
                                             console.log(`Zendesk - ticket retrieved from Zendesk API: ${JSON.stringify(itemNew)}`);
@@ -696,6 +705,16 @@
                         });
                     },
 
+                    async getValueForPlatform(fieldValue, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue) {
+                        let fieldName = 'im360_name';
+                        
+                        // Platform:
+                        let columnName = "Platform";
+                        let platformFieldId = isStage ? 35415435690388 : 35228789545364;
+                        let platformName = await getColumnValue(fieldName, fieldValue, columnName, platformFieldId, Global_zendeskBaseUrl, Global_funcCodeForJsonById);
+                        return platformName;
+                    },
+
                     async getValueForCountry (fieldValue, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue) {
                         let fieldName = 'im360_name';
                         
@@ -767,6 +786,9 @@
                                 if (columnName === "Reseller Name") {
                                     jsonPath = 'organizations';
                                 }
+                                // if (columnName === "Platform") {
+                                //     jsonPath = 'ticket_fields';
+                                // }
                                 let fieldData = '';
 
                                 try {
@@ -994,7 +1016,7 @@
             }
 
             .min-col-bcn {
-                min-width: 157px;
+                min-width: 158px;
             }
         </style>
 
