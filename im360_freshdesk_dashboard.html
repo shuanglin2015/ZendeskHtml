@@ -271,6 +271,7 @@
                         let getValueForEmail = this.getValueForEmail;
                         let getValueForReseller = this.getValueForReseller;
                         let getValueForDomain = this.getValueForDomain;
+                        let getValueForPlatform = this.getValueForPlatform;
 
                         if (Global_country_name) {
                             let countryFilter = `<condition attribute='im360_country' operator='eq' value='${Global_country_name}' />`;
@@ -352,6 +353,7 @@
                                             <attribute name='im360_resolved_at' /> \
                                             <attribute name='im360_resolvehours' /> \
                                             <attribute name='im360_status' /> \
+                                            <attribute name='im360_ticketsubjectline' /> \
                                             <attribute name='im360_updated_at' /> \
                                             <link-entity name='im360_country' from='im360_name' to='im360_country' alias='country'> \
                                                 <attribute name='im360_name' /> \
@@ -404,7 +406,7 @@
                                                 'Status': item.im360_status ? item.im360_status : '-',
                                                 'Domain': item.im360_domain ? item.im360_domain : '-',
                                                 'Priority': item.im360_priority ? item.im360_priority : '-',
-                                                'Platform': item.im360_ticketsubjectline === item.im360_name ? '-' : item.im360_ticketsubjectline  // use "im360_ticketsubjectline" to save Platform data
+                                                'Platform': item.im360_ticketsubjectline === item.im360_name ? '-' : item.im360_ticketsubjectline  // use "im360_ticketsubjectline" to save Platform data, it was same value with im360_name before
                                             };
 
                                             //console.log(`Zendesk Dashboard - item after adding more fields: ${JSON.stringify(itemNew)}`);

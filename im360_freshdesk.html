@@ -889,6 +889,8 @@
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
                             if (!ticket) {
                                 this.hideLoadingPage && this.hideLoadingPage();
+                                let msg = `Ticket ID ${ticketId} not found. Please enter a valid ticket ID`;
+                                Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg });
                                 return;
                             }
 
