@@ -406,7 +406,7 @@
                                                 'Status': item.im360_status ? item.im360_status : '-',
                                                 'Domain': item.im360_domain ? item.im360_domain : '-',
                                                 'Priority': item.im360_priority ? item.im360_priority : '-',
-                                                'Platform': item.im360_ticketsubjectline === item.im360_name ? '-' : item.im360_ticketsubjectline  // use "im360_ticketsubjectline" to save Platform data, it was same value with im360_name before
+                                                'Platform': item.im360_ticketsubjectline === item.im360_name || !item.im360_ticketsubjectline ? '-' : item.im360_ticketsubjectline  // use "im360_ticketsubjectline" to save Platform data, it was same value with im360_name before
                                             };
 
                                             //console.log(`Zendesk Dashboard - item after adding more fields: ${JSON.stringify(itemNew)}`);
