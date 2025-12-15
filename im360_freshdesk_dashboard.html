@@ -455,7 +455,7 @@
                                     if (isNRN) {
                                         console.log(`Zendesk - Ticket ID ${ticketId} is marked as No Response Necessary (NRN) ticket.`);
                                         // show alert dialog to inform the user
-                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Ticket ID ${ticketId} not found. Please enter a valid ticket ID.` });
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Ticket with ID ${ticketId} has NRN tags. Please enter a valid ticket ID.` });
                                     }
 
                                     if (!isNRN && item && item.id && item.subject && Object.keys(item).length > 0) {

@@ -887,10 +887,16 @@
                             let userName = userSettings && userSettings.userName;
                             let ticket = await this.getTicket(this.zendeskBaseUrl, this.funcCode, ticketId, userName, this.showLoadingPage, this.hideLoadingPage, 
                                 this.getZendeskConfigNameByValue, this.getZendeskConfigEmailByKey, this.getZendeskConfigRoleByKey, this.getZendeskConfigNameByKey);
-                            if (!ticket) {
+                            if (!ticket || ticket.error === 'RecordNotFound') {
                                 this.hideLoadingPage && this.hideLoadingPage();
                                 let msg = `Ticket ID ${ticketId} not found. Please enter a valid ticket ID`;
                                 Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: msg });
+                                return;
+                            }
+
+                            if (ticket === 'isNRN') {
+                                console.log(`Zendesk - Ticket ID ${ticketId} is marked as No Response Necessary (NRN) ticket.`);
+                                Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Ticket with ID ${ticketId} has NRN tags. Please enter a valid ticket ID.` });
                                 return;
                             }
 
@@ -1090,10 +1096,7 @@
                                         }
 
                                         if (isNRN) {
-                                            console.log(`Zendesk - Ticket ID ${ticketId} is marked as No Response Necessary (NRN) ticket.`);
-                                            // show alert dialog to inform the user
-                                            Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Ticket ID ${ticketId} not found. Please enter a valid ticket ID.` });
-                                            result = '';
+                                            result = 'isNRN';
                                         }
 
                                         if (!isNRN && result && result.ticket) {
