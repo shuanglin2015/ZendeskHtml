@@ -34,6 +34,7 @@
             let Global_country_name = '';
             let Global_im360_bcn = '';
             let Global_im360_armid = '';
+            let Global_initialized = false;
 
             let app = new Vue({
                 el: '#app',
@@ -555,6 +556,7 @@
                         let formId = this.formId;
                         let getAccountIdByCountryAndBCN = this.getAccountIdByCountryAndBCN;
                         let filterColumnForTicketId = this.filterColumnForTicketId;
+                        let filterColumnForBCN = this.filterColumnForBCN;
                         let filterColumn = this.filterColumn;
 
                         // dataSource: ticketsArr,
@@ -601,68 +603,95 @@
                                 window.gridInstance = e.component; // store grid reference globally
                             },
                             onContentReady: async function(e) {
+                                Global_initialized = true;
                                 console.log("Grid is ready");
                             },
                             onOptionChanged(e) {
+                                if (!Global_initialized) return;
+
+                                if (e.name === "filterValue") {
+                                    const filter = e.value;
+
+                                    const checkOperator = (expr) => {
+                                        if (Array.isArray(expr) && expr.length > 1) {
+                                            if (typeof expr[1] === "string") {
+                                                console.log("Operator:", expr[1]); // "=" or "contains"
+                                            } else {
+                                                expr.forEach(item => checkOperator(item));
+                                            }
+                                        }
+                                    };
+
+                                    checkOperator(filter);
+                                }
+
                                 if (e.name != "hoveredElement") {
+
                                     if (e.name === "columns") {
-                                        clearTimeout(window.searchTimer);
-                                        window.searchTimer = setTimeout(() => {
-                                            e.component.refresh();     // reload data, will retrieve the data again by the new Global_finalFilterArr
-                                        }, 800);                       // wait 800ms after user stops typing
+                                        let isSystemFilter = e.value === 'contains' || e.value === 'include' || e.value === 'notcontains' || e.value === 'startswith' || e.value === 'endswith' 
+                                                || e.value === '=' || e.value === '<>' || e.value === null || e.value === 'asc' || e.value === 'desc' || Array.isArray(e.value);
+
+                                        if (!isSystemFilter) {
+                                            clearTimeout(window.searchTimer);
+                                            window.searchTimer = setTimeout(() => {
+                                                e.component.refresh();     // reload data, will retrieve the data again by the new Global_finalFilterArr
+                                            }, 800);                       // wait 800ms after user stops typing
+                                        }
                                     }
 
                                     let searchName = '';
                                     let fieldName = '';
 
-                                    if (e.value && typeof e.value === "string" && e.value.indexOf("'") > -1) {
-                                        // if the user typed text contains single quote, it'll throw "Data loading error"
-                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `The search key word should not contain single quote.` })
-                                    } else {
-                                        switch (e.fullName) {
-                                            case "columns[0].filterValue":
-                                                Global_finalFilterArr = filterColumnForTicketId('Ticket Id', e.value, Global_finalFilterArr);
-                                                break;
-                                            case "columns[1].filterValue":
-                                                searchName = 'Country';
-                                                fieldName = 'im360_country';
-                                                Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                break;
-                                            case "columns[2].filterValue":
-                                                searchName = 'Ingram BCN#';
-                                                fieldName = 'im360_ingrambcn';
-                                                Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                break;
-                                            case "columns[3].filterValue":
-                                                searchName = 'Partner email address';
-                                                fieldName = 'im360_partneremailaddress';
-                                                Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                break;
-                                            case "columns[4].filterValue":
-                                                searchName = 'Reseller Name';
-                                                fieldName = 'im360_resellername';
-                                                Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                break;
-                                            case "columns[5].filterValue":
-                                                searchName = 'Ticket subject line';
-                                                fieldName = 'im360_name';
-                                                Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                break;
-                                            case "columns[6].filterValue":
-                                                searchName = 'Status';
-                                                fieldName = 'im360_status';
-                                                Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                break;
-                                            case "columns[7].filterValue":
-                                                searchName = 'Domain';
-                                                fieldName = 'im360_domain';
-                                                Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                break;
-                                            case "columns[8].filterValue":
-                                                searchName = 'Priority';
-                                                fieldName = 'im360_priority';
-                                                Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                break;
+                                    if (e.value) {
+                                        if (e.value && typeof e.value === "string" && e.value.indexOf("'") > -1) {
+                                            // if the user typed text contains single quote, it'll throw "Data loading error"
+                                            Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `The search key word should not contain single quote.` })
+                                        } else {
+                                            switch (e.fullName) {
+                                                case "columns[0].filterValue":
+                                                    Global_finalFilterArr = filterColumnForTicketId('Ticket Id', e.value, Global_finalFilterArr);
+                                                    break;
+                                                case "columns[1].filterValue":
+                                                    searchName = 'Country';
+                                                    fieldName = 'im360_country';
+                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
+                                                    break;
+                                                case "columns[2].filterValue":
+                                                    searchName = 'Ingram BCN#';
+                                                    fieldName = 'im360_ingrambcn';
+                                                    Global_finalFilterArr = filterColumnForBCN(searchName, e.value, Global_finalFilterArr, fieldName);
+                                                    break;
+                                                case "columns[3].filterValue":
+                                                    searchName = 'Partner email address';
+                                                    fieldName = 'im360_partneremailaddress';
+                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
+                                                    break;
+                                                case "columns[4].filterValue":
+                                                    searchName = 'Reseller Name';
+                                                    fieldName = 'im360_resellername';
+                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
+                                                    break;
+                                                case "columns[5].filterValue":
+                                                    searchName = 'Ticket subject line';
+                                                    fieldName = 'im360_name';
+                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
+                                                    break;
+                                                case "columns[6].filterValue":
+                                                    searchName = 'Status';
+                                                    fieldName = 'im360_status';
+                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
+                                                    break;
+                                                case "columns[7].filterValue":
+                                                    searchName = 'Domain';
+                                                    fieldName = 'im360_domain';
+                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
+                                                    break;
+                                                case "columns[8].filterValue":
+                                                    searchName = 'Priority';
+                                                    fieldName = 'im360_priority';
+                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
+                                                    break;
+                                            }
                                         }
                                     }
 
@@ -862,6 +891,30 @@
                         }
                         console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
                         return filterArr;
+                    },
+
+                    filterColumnForBCN (searchName, searchValue, filterArr, fieldName) {
+                        let filter = `<condition attribute='${fieldName}' operator='like' value='%${searchValue}%' />`;
+                        let partOfFilter = `<condition attribute='${fieldName}'`;
+                        filterArr = filterArr.filter(item => !item.includes(partOfFilter));
+                        if (searchValue) {
+                            filterArr.push(filter);
+                        }
+                        console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
+                        return filterArr;
+
+
+
+
+                        // // search BCN based on the input BCN or CMP ID, if no result, then do the normal search
+                        // let filter = `<condition attribute='im360_ingrambcn' operator='eq' value='${searchValue}' />`;
+                        // let partOfFilter = "<condition attribute='im360_ticketid'";
+                        // filterArr = filterArr.filter(item => !item.includes(partOfFilter));
+                        // if (searchValue) {
+                        //     filterArr.push(filter);
+                        // }
+                        // console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
+                        // return filterArr;
                     }
                 }
                 
@@ -1018,7 +1071,7 @@
             }
 
             .min-col-bcn {
-                min-width: 158px;
+                min-width: 159px;
             }
         </style>
 
