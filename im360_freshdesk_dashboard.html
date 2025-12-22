@@ -35,9 +35,6 @@
             let Global_im360_bcn = '';
             let Global_im360_armid = '';
             let Global_initialized = false;
-            let Global_filtered = false;
-            let Global_im360_bcn_or_armid = '';
-            let Global_isApplyingBCNExactSearch = false;
 
             let app = new Vue({
                 el: '#app',
@@ -304,64 +301,6 @@
                             "na", "NA"
                         */
 
-                        if (Global_im360_bcn_or_armid) {
-                            if (!Global_im360_armid && !Global_im360_bcn) {
-                                const grid = $("#gridContainer").dxDataGrid("instance");
-                                const currentFilter = grid.option("filterValue");
-                                console.log(`Zendesk - currentFilter: ${currentFilter}`);
-
-                                const accountWithCMPID = await getAccountByCMPID(Global_im360_bcn_or_armid);
-                                if (accountWithCMPID) {
-                                    Global_im360_armid = Global_im360_bcn_or_armid;
-                                    Global_im360_bcn = accountWithCMPID.im360_bcn;
-                                } else {
-                                    const accountWithBCN = await getAccountByBCN(Global_im360_bcn_or_armid);
-                                    if (accountWithBCN) {
-                                        Global_im360_armid = accountWithBCN.im360_armid;
-                                        Global_im360_bcn = Global_im360_bcn_or_armid;
-                                    }
-                                }
-
-                                let newFilter = "";
-                                const headerFilterCMPID = ["Ingram BCN#", "=", Global_im360_armid];
-                                const headerFilterBCN = ["Ingram BCN#", "=", Global_im360_bcn];
-
-                                if (Global_im360_armid) {
-                                    if (currentFilter) {
-                                        if (!Global_im360_bcn) {
-                                            newFilter = ["and", currentFilter, headerFilterCMPID];
-                                        } else {
-                                            newFilter = ["and", currentFilter, ["or", headerFilterCMPID, headerFilterBCN]];
-                                        }
-                                    } else {
-                                        if (!Global_im360_bcn) {
-                                            newFilter = headerFilterCMPID;
-                                        } else {
-                                            newFilter = ["or", headerFilterCMPID, headerFilterBCN];
-                                        }
-                                    }
-                                } else {
-                                    if (currentFilter) {
-                                        if (!Global_im360_bcn) {
-                                            newFilter = currentFilter;
-                                        } else {
-                                            newFilter = ["and", currentFilter, headerFilterBCN];
-                                        }
-                                    } else {
-                                        if (!Global_im360_bcn) {
-                                            newFilter = [];
-                                        } else {
-                                            newFilter = headerFilterBCN;
-                                        }
-                                    }
-                                }
-                                
-                                //grid.clearFilter();
-                                grid.option("filterValue", newFilter);
-                            }
-                            Global_im360_bcn_or_armid = '';
-                        }
-
                         if (Global_im360_bcn) {
                             let partOfBcnFilter = `<condition attribute="im360_ingrambcn"`;
                             // remove the element that contains the value stored in partOfBcnFilter:
@@ -449,8 +388,6 @@
                                 localStorage.setItem('zendesk_im360_bcn', '');
                                 localStorage.setItem('zendesk_im360_armid', '')
                             }, 5000);
-
-                            Global_filtered = false;
 
                             if (result != null) {
                                 let items = result.entities;
@@ -592,46 +529,6 @@
                             } 
                         }
 
-                        // return {
-                        //     data: results,
-                        //     totalCount: results.length
-                        // };
-
-                        // if (Global_im360_bcn_or_armid) {
-                        //     Global_im360_bcn_or_armid = '';
-
-                        //     const grid = $("#gridContainer").dxDataGrid("instance");
-                        //     const currentFilter = grid.option("filterValue");
-                        //     console.log(`Zendesk - currentFilter: ${currentFilter}`);
-
-                        //     if (Global_isApplyingBCNExactSearch) {
-                        //         let newFilter;
-                        //         if (Global_im360_armid) {
-                        //             newFilter = 
-                        //         }
-                        //         if (Global_im360_bcn) {
-
-                        //         }
-                        //         if (currentFilter) {
-                        //             let headerFilterExpr = 
-                        //             newFilter = ["or", currentFilter, headerFilterExpr];
-                        //         } else {
-                        //             newFilter = currentFilter;
-                        //         }
-                        //         //grid.clearFilter();
-                        //         grid.option("filterValue", newFilter);
-
-                        //         Global_isApplyingBCNExactSearch = false;
-                        //     }
-                        //     //     grid.filter(filter);
-                        // }
-
-                        // const grid = $("#gridContainer").dxDataGrid("instance");
-                        // const currentFilter = ['Platform', 'contains', 'X4A'];
-                        // const filter = ['Platform', 'contains', 'x4a'];
-                        // let newFilter = ["or", currentFilter, filter];
-                        // grid.filter(newFilter);
-
                         return results;
                     },
 
@@ -668,7 +565,6 @@
                         let formId = this.formId;
                         let getAccountIdByCountryAndBCN = this.getAccountIdByCountryAndBCN;
                         let filterColumnForTicketId = this.filterColumnForTicketId;
-                        let filterColumnForBCN = this.filterColumnForBCN;
                         let filterColumn = this.filterColumn;
 
                         // dataSource: ticketsArr,
@@ -815,112 +711,64 @@
                                         if (!isSystemFilter) {
                                             clearTimeout(window.searchTimer);
                                             window.searchTimer = setTimeout(() => {
-                                                if (!Global_isApplyingBCNExactSearch) {
-                                                    e.component.refresh();     // reload data, will retrieve the data again by the new Global_finalFilterArr
-                                                }
+                                                e.component.refresh();     // reload data, will retrieve the data again by the new Global_finalFilterArr
                                             }, 800);                       // wait 800ms after user stops typing
                                         }
                                     }
 
-                                    let searchName = '';
-                                    let fieldName = '';
-                                    let searchValue = '';
-
-                                    if (e.name === "filterValue") {
-                                        if (e.value) {
-                                            let isBCNExactSearch = false;
-                                            searchName = 'Ingram BCN#';
-
-                                            const checkOperator = (expr) => {
-                                                if (Array.isArray(expr) && expr.length > 1) {
-                                                    if (typeof expr[1] === "string") {
-                                                        console.log("Operator:", expr[1]); // "=" or "contains"
-                                                        if (expr[0] === searchName && expr[1] === '=') {
-                                                            isBCNExactSearch = true;
-                                                            searchValue = expr.length > 2 ? expr[2] : '';
-                                                        }
-                                                    } else {
-                                                        expr.forEach(item => checkOperator(item));
-                                                    }
-                                                }
-                                            };
-
-                                            checkOperator(e.value);
-
-                                            if (isBCNExactSearch && searchValue) {
-                                                //Global_finalFilterArr = filterColumnForBCN(searchName, searchValue, Global_finalFilterArr);
-                                                Global_im360_bcn_or_armid = searchValue.trim();
-                                                if (Global_im360_bcn_or_armid) {
-                                                    Global_filtered = true;
-                                                    Global_isApplyingBCNExactSearch = true;
-                                                    e.component.refresh();
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    //if (e.value && !Global_filtered) {
-                                    if (!Global_filtered && !Array.isArray(e.value)) {
+                                    if (!Array.isArray(e.value)) {
+                                        let searchName = '';
+                                        let fieldName = '';
                                         const filter = e.value && e.value.trim();
                                         switch (e.fullName) {
                                             case "columns[0].filterValue":
                                                 searchName = 'TicketId';
                                                 Global_finalFilterArr = filterColumnForTicketId(searchName, filter, Global_finalFilterArr);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[1].filterValue":
                                                 searchName = 'Country';
                                                 fieldName = 'im360_country';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[2].filterValue":
                                                 searchName = 'Ingram BCN#';
                                                 fieldName = 'im360_ingrambcn';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[3].filterValue":
                                                 searchName = 'Partner email address';
                                                 fieldName = 'im360_partneremailaddress';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[4].filterValue":
                                                 searchName = 'Reseller Name';
                                                 fieldName = 'im360_resellername';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[5].filterValue":
                                                 searchName = 'Ticket subject line';
                                                 fieldName = 'im360_name';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[6].filterValue":
                                                 searchName = 'Status';
                                                 fieldName = 'im360_status';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[7].filterValue":
                                                 searchName = 'Domain';
                                                 fieldName = 'im360_domain';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[8].filterValue":
                                                 searchName = 'Priority';
                                                 fieldName = 'im360_priority';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                             case "columns[9].filterValue":
                                                 searchName = 'Platform';
                                                 fieldName = 'im360_ticketsubjectline';
                                                 Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
-                                                Global_filtered = true;
                                                 break;
                                         }
                                     }
@@ -1128,24 +976,8 @@
                         }
                         console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
                         return filterArr;
-                    },
-
-                    filterColumnForBCN (searchName, searchValue, filterArr) {
-                        // if (!searchValue) {
-                        //     return filterArr;
-                        // }
-                        // // search BCN based on the input BCN or CMP ID, if no result, then do the normal search
-                        // let filter = `<condition attribute="im360_ingrambcn" operator="eq" value="${searchValue}" />`;
-                        // let partOfFilter = `<condition attribute="im360_ingrambcn"`;
-                        // filterArr = filterArr.filter(item => !item.includes(partOfFilter));
-                        // if (searchValue) {
-                        //     filterArr.push(filter);
-                        // }
-                        // console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
-                        return filterArr;
                     }
                 }
-                
             });
 
             const extractBCNTokens = (value) => {
