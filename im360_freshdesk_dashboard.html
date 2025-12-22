@@ -29,12 +29,15 @@
             let Global_zendeskBaseUrl = '';
             let Global_freshdeskUrl = '';
             let Global_funcCodeForJsonById = '';
-            let Global_finalFilterArr = ["<condition attribute='im360_created_at' operator='gt' value='1989-01-01 ' />"];
+            let Global_finalFilterArr = [`<condition attribute="im360_created_at" operator="gt" value="1989-01-01 " />`];
 
             let Global_country_name = '';
             let Global_im360_bcn = '';
             let Global_im360_armid = '';
             let Global_initialized = false;
+            let Global_filtered = false;
+            let Global_im360_bcn_or_armid = '';
+            let Global_isApplyingBCNExactSearch = false;
 
             let app = new Vue({
                 el: '#app',
@@ -102,18 +105,18 @@
                 },
                 methods: {
                     async getFreshdeskConfig() {
-                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                         <entity name='im360_configuration'> \
-                             <attribute name='im360_value'/> \
-                             <attribute name='im360_value2'/> \
-                             <attribute name='im360_value3'/> \
-                             <attribute name='im360_value4'/> \
-                             <filter type='and'> \
-                                 <condition attribute='im360_name' operator='eq' value='FreshdeskAPI' /> \
-                                 <condition attribute='statuscode' operator='eq' value='1' /> \
+                        let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                         <entity name="im360_configuration"> \
+                             <attribute name="im360_value"/> \
+                             <attribute name="im360_value2"/> \
+                             <attribute name="im360_value3"/> \
+                             <attribute name="im360_value4"/> \
+                             <filter type="and"> \
+                                 <condition attribute="im360_name" operator="eq" value="FreshdeskAPI" /> \
+                                 <condition attribute="statecode" operator="eq" value="0" /> \
                              </filter> \
                          </entity> \
-                         </fetch>";
+                         </fetch>`;
 
                         return Xrm.WebApi.retrieveMultipleRecords("im360_configuration", "?fetchXml=" + fetchXml).then(
                             function success(result) {
@@ -156,13 +159,13 @@
                         }
 
                         let bcnFilters = '';
-                        const defaultFilter = `<condition attribute='im360_bcn' operator='eq' value='${zendeskBCN}' />`;
-                        const defaultFilterCMP = `<condition attribute='im360_armid' operator='like' value='%${zendeskBCN}%' />`;
+                        const defaultFilter = `<condition attribute="im360_bcn" operator="eq" value="${zendeskBCN}" />`;
+                        const defaultFilterCMP = `<condition attribute="im360_armid" operator="like" value="%${zendeskBCN}%" />`;
                         bcnFilters += defaultFilter;
                         bcnFilters += defaultFilterCMP;
                         bcnFilters += defaultFilter.replace(/-/g, "")
                         bcnFilters += defaultFilterCMP.replace(/-/g, "");
-                        const defaultFilterWithZero = `<condition attribute='im360_bcn' operator='eq' value='0${zendeskBCN}' />`;
+                        const defaultFilterWithZero = `<condition attribute="im360_bcn" operator="eq" value="0${zendeskBCN}" />`;
                         bcnFilters += defaultFilterWithZero;
                         bcnFilters += defaultFilterWithZero.replace(/-/g, "");
 
@@ -171,32 +174,33 @@
                         const numbersStrArr = validBcn.match(/\d+/g) || [];
                         numbersStrArr.forEach(bcnItem => {
                             let possibleBCN = bcnItem;
-                            let possibleBcnFilter = `<condition attribute='im360_bcn' operator='eq' value='${possibleBCN}' />`;
+                            let possibleBcnFilter = `<condition attribute="im360_bcn" operator="eq" value="${possibleBCN}" />`;
                             bcnFilters += possibleBcnFilter;
                         });
 
                         // Zendesk ticket: it's possible to save CMP ID (im360_armid) in the BCN field (CMP IDs are all numbers, or numbers with single quote)
                         numbersStrArr.forEach(armIdItem => {
                             let possibleArmId = armIdItem;
-                            let possibleArmIdFilter = `<condition attribute='im360_armid' operator='like' value='%${possibleArmId}%' />`;
+                            let possibleArmIdFilter = `<condition attribute="im360_armid" operator="like" value="%${possibleArmId}%" />`;
                             bcnFilters += possibleArmIdFilter;
                         });
 
                         if (zendeskCountryName && zendeskBCN) {
-                            let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                                <entity name='account'> \
-                                    <attribute name='accountid' /> \
-                                    <attribute name='im360_bcn' /> \
-                                    <attribute name='im360_armid' /> \
-                                    <link-entity name='im360_country' from='im360_countryid' to='im360_country' link-type='inner'> \
-                                        <attribute name='im360_name' alias='CountryName' /> \
-                                        <filter type='and'> \
-                                            <condition attribute='im360_name' operator='eq' value='" + zendeskCountryName + "' /> \
+                            let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                                <entity name="account"> \
+                                    <attribute name="accountid" /> \
+                                    <attribute name="im360_bcn" /> \
+                                    <attribute name="im360_armid" /> \
+                                    <link-entity name="im360_country" from="im360_countryid" to="im360_country" link-type="inner"> \
+                                        <attribute name="im360_name" alias="CountryName" /> \
+                                        <filter type="and"> \
+                                            <condition attribute="im360_name" operator="eq" value="${zendeskCountryName}" /> \
+                                            <condition attribute="statecode" operator="eq" value="0" /> \
                                         </filter> \
                                     </link-entity> \
-                                    <filter type='or'> " + bcnFilters + " </filter> \
+                                    <filter type="or"> ${bcnFilters} </filter> \
                                 </entity> \
-                                </fetch>";
+                                </fetch>`;
 
                             return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
                                 function success(result) {
@@ -263,7 +267,9 @@
                         }
                     },
 
-                    async getTickets() {
+                    async getTickets(loadOptions) {
+                        console.log(loadOptions.filter);
+
                         let results = [];
                         let bcnFilters = '';
                         let getActiveCountries = this.getActiveCountries;
@@ -275,8 +281,8 @@
                         let getValueForPlatform = this.getValueForPlatform;
 
                         if (Global_country_name) {
-                            let countryFilter = `<condition attribute='im360_country' operator='eq' value='${Global_country_name}' />`;
-                            let partOfCountryFilter = "<condition attribute='im360_country'";
+                            let countryFilter = `<condition attribute="im360_country" operator="eq" value="${Global_country_name}" />`;
+                            let partOfCountryFilter = `<condition attribute="im360_country"`;
                             // remove the element that contains the value stored in partOfCountryFilter:
                             Global_finalFilterArr = Global_finalFilterArr.filter(item => !item.includes(partOfCountryFilter));
                             Global_finalFilterArr.push(countryFilter);
@@ -297,19 +303,78 @@
                             1300062325/AERUMA GROUP SDN BHD
                             "na", "NA"
                         */
+
+                        if (Global_im360_bcn_or_armid) {
+                            if (!Global_im360_armid && !Global_im360_bcn) {
+                                const grid = $("#gridContainer").dxDataGrid("instance");
+                                const currentFilter = grid.option("filterValue");
+                                console.log(`Zendesk - currentFilter: ${currentFilter}`);
+
+                                const accountWithCMPID = await getAccountByCMPID(Global_im360_bcn_or_armid);
+                                if (accountWithCMPID) {
+                                    Global_im360_armid = Global_im360_bcn_or_armid;
+                                    Global_im360_bcn = accountWithCMPID.im360_bcn;
+                                } else {
+                                    const accountWithBCN = await getAccountByBCN(Global_im360_bcn_or_armid);
+                                    if (accountWithBCN) {
+                                        Global_im360_armid = accountWithBCN.im360_armid;
+                                        Global_im360_bcn = Global_im360_bcn_or_armid;
+                                    }
+                                }
+
+                                let newFilter = "";
+                                const headerFilterCMPID = ["Ingram BCN#", "=", Global_im360_armid];
+                                const headerFilterBCN = ["Ingram BCN#", "=", Global_im360_bcn];
+
+                                if (Global_im360_armid) {
+                                    if (currentFilter) {
+                                        if (!Global_im360_bcn) {
+                                            newFilter = ["and", currentFilter, headerFilterCMPID];
+                                        } else {
+                                            newFilter = ["and", currentFilter, ["or", headerFilterCMPID, headerFilterBCN]];
+                                        }
+                                    } else {
+                                        if (!Global_im360_bcn) {
+                                            newFilter = headerFilterCMPID;
+                                        } else {
+                                            newFilter = ["or", headerFilterCMPID, headerFilterBCN];
+                                        }
+                                    }
+                                } else {
+                                    if (currentFilter) {
+                                        if (!Global_im360_bcn) {
+                                            newFilter = currentFilter;
+                                        } else {
+                                            newFilter = ["and", currentFilter, headerFilterBCN];
+                                        }
+                                    } else {
+                                        if (!Global_im360_bcn) {
+                                            newFilter = [];
+                                        } else {
+                                            newFilter = headerFilterBCN;
+                                        }
+                                    }
+                                }
+                                
+                                //grid.clearFilter();
+                                grid.option("filterValue", newFilter);
+                            }
+                            Global_im360_bcn_or_armid = '';
+                        }
+
                         if (Global_im360_bcn) {
-                            let partOfBcnFilter = "<condition attribute='im360_ingrambcn'";
+                            let partOfBcnFilter = `<condition attribute="im360_ingrambcn"`;
                             // remove the element that contains the value stored in partOfBcnFilter:
                             Global_finalFilterArr = Global_finalFilterArr.filter(item => !item.includes(partOfBcnFilter));
 
                             // BCN logic
-                            const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${Global_im360_bcn}%' />`;
+                            const defaultFilter = `<condition attribute="im360_ingrambcn" operator="like" value="%${Global_im360_bcn}%" />`;
                             bcnFilters += defaultFilter;
 
                             // add "-" after the second digits, for example: "41389412" -> "41-389412"
                             if (Global_im360_bcn.length > 2) {
                                 let bcnWithDash = Global_im360_bcn.slice(0, 2) + "-" + Global_im360_bcn.slice(2);
-                                bcnFilters += `<condition attribute='im360_ingrambcn' operator='like' value='%${bcnWithDash}%' />`;
+                                bcnFilters += `<condition attribute="im360_ingrambcn" operator="like" value="%${bcnWithDash}%" />`;
                             }
 
                             // if the BCN is not in the Zendesk ticket (only contains CMP ID), when the user type BCN in the IM360 global search box to find the Account, then check the tickets, the tickets will be filtered by BCN or CMP ID, so it'll find that ticket by the account searched.
@@ -319,7 +384,7 @@
                             // const numbersStrArr = validBcn.match(/\d+/g) || [];
                             // numbersStrArr.forEach(bcnItem => {
                             //     let possibleBCN = bcnItem;
-                            //     let possibleFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${possibleBCN}%' />`;
+                            //     let possibleFilter = `<condition attribute="im360_ingrambcn" operator="like" value="%${possibleBCN}%" />`;
                             //     bcnFilters += possibleFilter;
                             // });
                         }
@@ -327,49 +392,51 @@
                         if (Global_im360_armid) {
 
                             // CMP ID logic
-                            const defaultFilter = `<condition attribute='im360_ingrambcn' operator='like' value='%${Global_im360_armid}%' />`;
+                            const defaultFilter = `<condition attribute="im360_ingrambcn" operator="like" value="%${Global_im360_armid}%" />`;
                             bcnFilters += defaultFilter;
 
                             // add "-" after the second digits, for example: "1000003522" -> "10-00003522"
                             let cmpWithDash = Global_im360_armid.slice(0, 2) + "-" + Global_im360_armid.slice(2);
-                            bcnFilters += `<condition attribute='im360_ingrambcn' operator='like' value='%${cmpWithDash}%' />`;
+                            bcnFilters += `<condition attribute="im360_ingrambcn" operator="like" value="%${cmpWithDash}%" />`;
 
                             // if the CMP ID is not in the Zendesk ticket (only contains BCN), when the user type CMP ID in the IM360 global search box to find the Account, then check the tickets, the tickets will be filtered by CMP ID, so it'll find that ticket by the account searched.
                         }
 
                         let bcnFiltersResult = bcnFilters ? `<filter type="or"> ${bcnFilters}</filter>` : '';
 
-                        //let fetchXml = `<fetch top='15'> \
+                        //let fetchXml = `<fetch top="15"> \
                         let fetchXml = `<fetch> \
-                                        <entity name='im360_zendesktickets'> \
-                                            <attribute name='im360_ticketid' /> \
-                                            <attribute name='im360_name' /> \
-                                            <attribute name='im360_country' /> \
-                                            <attribute name='im360_created_at' /> \
-                                            <attribute name='im360_domain' /> \
-                                            <attribute name='im360_ingrambcn' /> \
-                                            <attribute name='im360_partneremailaddress' /> \
-                                            <attribute name='im360_priority' /> \
-                                            <attribute name='im360_resellername' /> \
-                                            <attribute name='im360_resolved_at' /> \
-                                            <attribute name='im360_resolvehours' /> \
-                                            <attribute name='im360_status' /> \
-                                            <attribute name='im360_ticketsubjectline' /> \
-                                            <attribute name='im360_updated_at' /> \
-                                            <link-entity name='im360_country' from='im360_name' to='im360_country' alias='country'> \
-                                                <attribute name='im360_name' /> \
-                                                <filter type='and'> \
-                                                    <condition attribute='statecode' operator='eq' value='0' /> \
+                                        <entity name="im360_zendesktickets"> \
+                                            <attribute name="im360_ticketid" /> \
+                                            <attribute name="im360_name" /> \
+                                            <attribute name="im360_country" /> \
+                                            <attribute name="im360_created_at" /> \
+                                            <attribute name="im360_domain" /> \
+                                            <attribute name="im360_ingrambcn" /> \
+                                            <attribute name="im360_partneremailaddress" /> \
+                                            <attribute name="im360_priority" /> \
+                                            <attribute name="im360_resellername" /> \
+                                            <attribute name="im360_resolved_at" /> \
+                                            <attribute name="im360_resolvehours" /> \
+                                            <attribute name="im360_status" /> \
+                                            <attribute name="im360_ticketsubjectline" /> \
+                                            <attribute name="im360_updated_at" /> \
+                                            <link-entity name="im360_country" from="im360_name" to="im360_country" alias="country"> \
+                                                <attribute name="im360_name" /> \
+                                                <filter type="and"> \
+                                                    <condition attribute="statecode" operator="eq" value="0" /> \
                                                 </filter> \
                                             </link-entity> \
-                                            <filter type='and'> ${Global_finalFilterArr.toString().replace(',', '')} \
-                                                <condition attribute='im360_domain' operator='ne' value='Sales Esc (Legacy)' /> \
-                                                <condition attribute='im360_domain' operator='ne' value='Sales Esc�(Legacy)' /> \
-                                                <condition attribute='im360_domain' operator='ne' value='MS Escalations (Legacy)' /> \
+                                            <filter type="and"> ${Global_finalFilterArr.toString().replace(",", "")} \
+                                                <condition attribute="im360_domain" operator="ne" value="Sales Esc (Legacy)" /> \
+                                                <condition attribute="im360_domain" operator="ne" value="Sales Esc (Legacy)" /> \
+                                                <condition attribute="im360_domain" operator="ne" value="MS Escalations (Legacy)" /> \
+                                                <condition attribute="statecode" operator="eq" value="0" /> \
                                              ${bcnFiltersResult}</filter> \
-                                            <order descending='true' attribute='im360_created_at' /> \
+                                            <order descending="true" attribute="im360_created_at" /> \
                                         </entity> \
                                     </fetch>`;
+                            fetchXml = escapeXml(fetchXml);
                             console.log(`Zendesk Dashboard - fetchXml for getTickets(): ${fetchXml}`);
 
                         try {
@@ -382,6 +449,8 @@
                                 localStorage.setItem('zendesk_im360_bcn', '');
                                 localStorage.setItem('zendesk_im360_armid', '')
                             }, 5000);
+
+                            Global_filtered = false;
 
                             if (result != null) {
                                 let items = result.entities;
@@ -422,13 +491,16 @@
                             throw "Data loading error";
                         }
 
-                        // <condition attribute='im360_ticketid' operator='eq' value='39744' />
-                        let partOfTicketFilter = "<condition attribute='im360_ticketid'";
+                        // <condition attribute="im360_ticketid" operator="eq" value="39744" />
+                        let partOfTicketFilter = `<condition attribute="im360_ticketid"`;
                         Global_finalFilterArr = Global_finalFilterArr.filter(item => item.includes(partOfTicketFilter));
                         let isTicketIdSearch = Global_finalFilterArr.length > 0;
 
                         if (results.length == 0 && isTicketIdSearch) {
-                            const ticketId = Global_finalFilterArr[0].toString().split("value='")[1].split("'")[0];
+                            let ticketId = Global_finalFilterArr[0].toString().split(`value="`)[1].split(`"`)[0];
+                            if (ticketId) {
+                                ticketId = ticketId.trim();
+                            }
                             let freshdeskUrlWithTicketId = `${Global_freshdeskUrl}${ticketId}`;
                             console.log (`Zendesk URL to get ticket by id: ${freshdeskUrlWithTicketId}`);
 
@@ -520,18 +592,58 @@
                             } 
                         }
 
+                        // return {
+                        //     data: results,
+                        //     totalCount: results.length
+                        // };
+
+                        // if (Global_im360_bcn_or_armid) {
+                        //     Global_im360_bcn_or_armid = '';
+
+                        //     const grid = $("#gridContainer").dxDataGrid("instance");
+                        //     const currentFilter = grid.option("filterValue");
+                        //     console.log(`Zendesk - currentFilter: ${currentFilter}`);
+
+                        //     if (Global_isApplyingBCNExactSearch) {
+                        //         let newFilter;
+                        //         if (Global_im360_armid) {
+                        //             newFilter = 
+                        //         }
+                        //         if (Global_im360_bcn) {
+
+                        //         }
+                        //         if (currentFilter) {
+                        //             let headerFilterExpr = 
+                        //             newFilter = ["or", currentFilter, headerFilterExpr];
+                        //         } else {
+                        //             newFilter = currentFilter;
+                        //         }
+                        //         //grid.clearFilter();
+                        //         grid.option("filterValue", newFilter);
+
+                        //         Global_isApplyingBCNExactSearch = false;
+                        //     }
+                        //     //     grid.filter(filter);
+                        // }
+
+                        // const grid = $("#gridContainer").dxDataGrid("instance");
+                        // const currentFilter = ['Platform', 'contains', 'X4A'];
+                        // const filter = ['Platform', 'contains', 'x4a'];
+                        // let newFilter = ["or", currentFilter, filter];
+                        // grid.filter(newFilter);
+
                         return results;
                     },
 
                     async getActiveCountries() {
-                        let fetchXml = "<fetch top='5000'> \
-                                        <entity name='im360_country'> \
-                                            <attribute name='im360_name' /> \
-                                            <filter type='and'> \
-                                            <condition attribute='statecode' operator='eq' value='0' /> \
+                        let fetchXml = `<fetch top="5000"> \
+                                        <entity name="im360_country"> \
+                                            <attribute name="im360_name" /> \
+                                            <filter type="and"> \
+                                            <condition attribute="statecode" operator="eq" value="0" /> \
                                             </filter> \
                                         </entity> \
-                                        </fetch>";
+                                        </fetch>`;
 
                         let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_country", "?fetchXml=" + fetchXml).then(
@@ -571,9 +683,88 @@
                                 //     return Promise.resolve(); // let the grid continue without forcing a reload
                                 // }
                             }),
+                            customizeColumns(columns) {
+                                const colTicketId = columns.find(c => c.dataField === "TicketId");
+                                if (colTicketId) {
+                                    colTicketId.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (filterValue == null || filterValue === "") return null;
+                                        const num = Number(filterValue.trim());
+                                        if (isNaN(num)) return null;
+                                        return [["TicketId", "=", num]];
+                                    };
+                                }
+                                const colCountry = columns.find(c => c.dataField === "Country");
+                                if (colCountry) {
+                                    colCountry.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Country", "contains", filterValue.trim()]];
+                                    };
+                                }
+                                const colIngramBCN = columns.find(c => c.dataField === "Ingram BCN#");
+                                if (colIngramBCN) {
+                                    colIngramBCN.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Ingram BCN#", "contains", filterValue.trim()]];
+                                    };
+                                }
+                                const colPartnerEmailAddress = columns.find(c => c.dataField === "Partner email address");
+                                if (colPartnerEmailAddress) {
+                                    colPartnerEmailAddress.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Partner email address", "contains", filterValue.trim()]];
+                                    };
+                                }
+                                const colResellerName = columns.find(c => c.dataField === "Reseller Name");
+                                if (colResellerName) {
+                                    colResellerName.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Reseller Name", "contains", filterValue.trim()]];
+                                    };
+                                }
+                                const colSubject = columns.find(c => c.dataField === "Ticket subject line");
+                                if (colSubject) {
+                                    colSubject.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Ticket subject line", "contains", filterValue.trim()]];
+                                    };
+                                }
+                                const colStatus = columns.find(c => c.dataField === "Status");
+                                if (colStatus) {
+                                    colStatus.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Status", "contains", filterValue.trim()]];
+                                    };
+                                }
+                                const colDomain = columns.find(c => c.dataField === "Domain");
+                                if (colDomain) {
+                                    colDomain.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Domain", "contains", filterValue.trim()]];
+                                    };
+                                }
+                                const colPriority = columns.find(c => c.dataField === "Priority");
+                                if (colPriority) {
+                                    colPriority.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Priority", "contains", filterValue.trim()]];
+                                    };
+                                }
+                                const colPlatform = columns.find(c => c.dataField === "Platform");
+                                if (colPlatform) {
+                                    colPlatform.calculateFilterExpression = function (filterValue, selectedFilterOperation) {
+                                        if (!filterValue) return null;
+                                        return [["Platform", "contains", filterValue.trim()]];
+                                    };
+                                }
+                            },
                             filterPanel: {
                                 visible: true
                             },
+                            // remoteOperations: {
+                            //     filtering: true,
+                            //     sorting: true,
+                            //     paging: true
+                            // },
                             remoteOperations: false,
                             allowColumnReordering: true,
                             rowAlternationEnabled: true,
@@ -609,95 +800,134 @@
                             onOptionChanged(e) {
                                 if (!Global_initialized) return;
 
-                                if (e.name === "filterValue") {
-                                    const filter = e.value;
-
-                                    const checkOperator = (expr) => {
-                                        if (Array.isArray(expr) && expr.length > 1) {
-                                            if (typeof expr[1] === "string") {
-                                                console.log("Operator:", expr[1]); // "=" or "contains"
-                                            } else {
-                                                expr.forEach(item => checkOperator(item));
-                                            }
-                                        }
-                                    };
-
-                                    checkOperator(filter);
-                                }
-
                                 if (e.name != "hoveredElement") {
+                                    // the maximum length for the BCN field is 100 in IM360
+                                    const MAX_LENGTH = 100;
+                                    if (e.value && e.value.length > MAX_LENGTH) {
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `The search value should not be longer than ${MAX_LENGTH} characters.` });
+                                        return;
+                                    }
 
                                     if (e.name === "columns") {
-                                        let isSystemFilter = e.value === 'contains' || e.value === 'include' || e.value === 'notcontains' || e.value === 'startswith' || e.value === 'endswith' 
-                                                || e.value === '=' || e.value === '<>' || e.value === null || e.value === 'asc' || e.value === 'desc' || Array.isArray(e.value);
+                                        let isSystemFilter = e.value === 'contains' || e.value === 'include' || e.value === 'notcontains' || e.value === 'startswith' || e.value === 'endswith'
+                                            || e.value === '=' || e.value === '<>' || e.value === 'asc' || e.value === 'desc';
 
                                         if (!isSystemFilter) {
                                             clearTimeout(window.searchTimer);
                                             window.searchTimer = setTimeout(() => {
-                                                e.component.refresh();     // reload data, will retrieve the data again by the new Global_finalFilterArr
+                                                if (!Global_isApplyingBCNExactSearch) {
+                                                    e.component.refresh();     // reload data, will retrieve the data again by the new Global_finalFilterArr
+                                                }
                                             }, 800);                       // wait 800ms after user stops typing
                                         }
                                     }
 
                                     let searchName = '';
                                     let fieldName = '';
+                                    let searchValue = '';
 
-                                    if (e.value) {
-                                        if (e.value && typeof e.value === "string" && e.value.indexOf("'") > -1) {
-                                            // if the user typed text contains single quote, it'll throw "Data loading error"
-                                            Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `The search key word should not contain single quote.` })
-                                        } else {
-                                            switch (e.fullName) {
-                                                case "columns[0].filterValue":
-                                                    Global_finalFilterArr = filterColumnForTicketId('Ticket Id', e.value, Global_finalFilterArr);
-                                                    break;
-                                                case "columns[1].filterValue":
-                                                    searchName = 'Country';
-                                                    fieldName = 'im360_country';
-                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                    break;
-                                                case "columns[2].filterValue":
-                                                    searchName = 'Ingram BCN#';
-                                                    fieldName = 'im360_ingrambcn';
-                                                    Global_finalFilterArr = filterColumnForBCN(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                    break;
-                                                case "columns[3].filterValue":
-                                                    searchName = 'Partner email address';
-                                                    fieldName = 'im360_partneremailaddress';
-                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                    break;
-                                                case "columns[4].filterValue":
-                                                    searchName = 'Reseller Name';
-                                                    fieldName = 'im360_resellername';
-                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                    break;
-                                                case "columns[5].filterValue":
-                                                    searchName = 'Ticket subject line';
-                                                    fieldName = 'im360_name';
-                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                    break;
-                                                case "columns[6].filterValue":
-                                                    searchName = 'Status';
-                                                    fieldName = 'im360_status';
-                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                    break;
-                                                case "columns[7].filterValue":
-                                                    searchName = 'Domain';
-                                                    fieldName = 'im360_domain';
-                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                    break;
-                                                case "columns[8].filterValue":
-                                                    searchName = 'Priority';
-                                                    fieldName = 'im360_priority';
-                                                    Global_finalFilterArr = filterColumn(searchName, e.value, Global_finalFilterArr, fieldName);
-                                                    break;
+                                    if (e.name === "filterValue") {
+                                        if (e.value) {
+                                            let isBCNExactSearch = false;
+                                            searchName = 'Ingram BCN#';
+
+                                            const checkOperator = (expr) => {
+                                                if (Array.isArray(expr) && expr.length > 1) {
+                                                    if (typeof expr[1] === "string") {
+                                                        console.log("Operator:", expr[1]); // "=" or "contains"
+                                                        if (expr[0] === searchName && expr[1] === '=') {
+                                                            isBCNExactSearch = true;
+                                                            searchValue = expr.length > 2 ? expr[2] : '';
+                                                        }
+                                                    } else {
+                                                        expr.forEach(item => checkOperator(item));
+                                                    }
+                                                }
+                                            };
+
+                                            checkOperator(e.value);
+
+                                            if (isBCNExactSearch && searchValue) {
+                                                //Global_finalFilterArr = filterColumnForBCN(searchName, searchValue, Global_finalFilterArr);
+                                                Global_im360_bcn_or_armid = searchValue.trim();
+                                                if (Global_im360_bcn_or_armid) {
+                                                    Global_filtered = true;
+                                                    Global_isApplyingBCNExactSearch = true;
+                                                    e.component.refresh();
+                                                }
                                             }
+                                        }
+                                    }
+
+                                    //if (e.value && !Global_filtered) {
+                                    if (!Global_filtered && !Array.isArray(e.value)) {
+                                        const filter = e.value && e.value.trim();
+                                        switch (e.fullName) {
+                                            case "columns[0].filterValue":
+                                                searchName = 'TicketId';
+                                                Global_finalFilterArr = filterColumnForTicketId(searchName, filter, Global_finalFilterArr);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[1].filterValue":
+                                                searchName = 'Country';
+                                                fieldName = 'im360_country';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[2].filterValue":
+                                                searchName = 'Ingram BCN#';
+                                                fieldName = 'im360_ingrambcn';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[3].filterValue":
+                                                searchName = 'Partner email address';
+                                                fieldName = 'im360_partneremailaddress';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[4].filterValue":
+                                                searchName = 'Reseller Name';
+                                                fieldName = 'im360_resellername';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[5].filterValue":
+                                                searchName = 'Ticket subject line';
+                                                fieldName = 'im360_name';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[6].filterValue":
+                                                searchName = 'Status';
+                                                fieldName = 'im360_status';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[7].filterValue":
+                                                searchName = 'Domain';
+                                                fieldName = 'im360_domain';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[8].filterValue":
+                                                searchName = 'Priority';
+                                                fieldName = 'im360_priority';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
+                                            case "columns[9].filterValue":
+                                                searchName = 'Platform';
+                                                fieldName = 'im360_ticketsubjectline';
+                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                Global_filtered = true;
+                                                break;
                                         }
                                     }
 
                                     // // global search:
                                     // if (e.name === "searchPanel" && e.fullName === "searchPanel.text") {
-                                    //     console.log("User global search value changed:", e.value);
+                                    //     console.log("User global search value changed:", filter);
                                     // }
                                 }
                             },
@@ -790,15 +1020,16 @@
                         let configName = '';
 
                         if (fieldValue && fieldValue != '-') {
-                            const fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                                <entity name='im360_zendeskconfig'> \
-                                    <attribute name='im360_name' /> \
-                                    <filter type='and'> \
-                                        <condition attribute='im360_value' operator='eq' value='" + fieldValue + "' /> \
-                                        <condition attribute='im360_category' operator='eq' value='ticket_fields' /> \
+                            const fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                                <entity name="im360_zendeskconfig"> \
+                                    <attribute name="im360_name" /> \
+                                    <filter type="and"> \
+                                        <condition attribute="im360_value" operator="eq" value="${fieldValue}" /> \
+                                        <condition attribute="im360_category" operator="eq" value="ticket_fields" /> \
+                                        <condition attribute="statecode" operator="eq" value="0" /> \
                                     </filter> \
                                 </entity> \
-                                </fetch>";
+                                </fetch>`;
 
                             const result = await Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml);
                             if (result != null && result.entities && result.entities.length > 0) {
@@ -872,8 +1103,11 @@
                     },
 
                     filterColumn (searchName, searchValue, filterArr, fieldName) {
-                        let filter = `<condition attribute='${fieldName}' operator='like' value='%${searchValue}%' />`;
-                        let partOfFilter = `<condition attribute='${fieldName}'`;
+                        // if (!searchValue) {
+                        //     return filterArr;
+                        // }
+                        let filter = `<condition attribute="${fieldName}" operator="like" value="%${searchValue}%" />`;
+                        let partOfFilter = `<condition attribute="${fieldName}"`;
                         filterArr = filterArr.filter(item => !item.includes(partOfFilter));
                         if (searchValue) {
                             filterArr.push(filter);
@@ -883,8 +1117,11 @@
                     },
 
                     filterColumnForTicketId (searchName, searchValue, filterArr) {
-                        let filter = `<condition attribute='im360_ticketid' operator='eq' value='${searchValue}' />`;
-                        let partOfFilter = "<condition attribute='im360_ticketid'";
+                        // if (!searchValue) {
+                        //     return filterArr;
+                        // }
+                        let filter = `<condition attribute="im360_ticketid" operator="eq" value="${searchValue}" />`;
+                        let partOfFilter = `<condition attribute="im360_ticketid"`;
                         filterArr = filterArr.filter(item => !item.includes(partOfFilter));
                         if (searchValue) {
                             filterArr.push(filter);
@@ -893,28 +1130,19 @@
                         return filterArr;
                     },
 
-                    filterColumnForBCN (searchName, searchValue, filterArr, fieldName) {
-                        let filter = `<condition attribute='${fieldName}' operator='like' value='%${searchValue}%' />`;
-                        let partOfFilter = `<condition attribute='${fieldName}'`;
-                        filterArr = filterArr.filter(item => !item.includes(partOfFilter));
-                        if (searchValue) {
-                            filterArr.push(filter);
-                        }
-                        console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
-                        return filterArr;
-
-
-
-
+                    filterColumnForBCN (searchName, searchValue, filterArr) {
+                        // if (!searchValue) {
+                        //     return filterArr;
+                        // }
                         // // search BCN based on the input BCN or CMP ID, if no result, then do the normal search
-                        // let filter = `<condition attribute='im360_ingrambcn' operator='eq' value='${searchValue}' />`;
-                        // let partOfFilter = "<condition attribute='im360_ticketid'";
+                        // let filter = `<condition attribute="im360_ingrambcn" operator="eq" value="${searchValue}" />`;
+                        // let partOfFilter = `<condition attribute="im360_ingrambcn"`;
                         // filterArr = filterArr.filter(item => !item.includes(partOfFilter));
                         // if (searchValue) {
                         //     filterArr.push(filter);
                         // }
                         // console.log(`User column search value changed for ${searchName}:, ${searchValue}`);
-                        // return filterArr;
+                        return filterArr;
                     }
                 }
                 
@@ -1052,6 +1280,74 @@
                 return trueTags.has(tag) ? true : false;
 
             };
+
+            const getAccountByCMPID = async (cmpid) => {
+                let fetchXml = `<fetch top="5000"> \
+                                    <entity name="account"> \
+                                        <attribute name="im360_bcn" /> \
+                                        <attribute name="im360_armid" /> \
+                                        <filter type="and"> \
+                                            <filter type='or'>
+                                                <condition attribute="im360_armid" operator="eq" value="${cmpid}" /> \
+                                                <condition attribute="im360_armid" operator="eq" value="'${cmpid}'" /> \
+                                            </filter>
+                                            <condition attribute="statecode" operator="eq" value="0" /> \
+                                        </filter> \
+                                    </entity> \
+                                </fetch>`;
+
+                return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
+                    function success(result) {
+                        if (result != null) {
+                            return result.entities && result.entities.length > 0 ? result.entities[0] : null;
+                        } else {
+                            console.error(`Zendesk - Cannot get account, the fetchXml is: ${fetchXml}`);
+                            return null;
+                        }
+                    },
+                    function (error) {
+                        console.error(`Zendesk - ${error.message}`);
+                        return null;
+                    }
+                );
+            };
+
+            const getAccountByBCN = async (bcn) => {
+                let fetchXml = `<fetch top="5000"> \
+                                    <entity name="account"> \
+                                        <attribute name="im360_bcn" /> \
+                                        <attribute name="im360_armid" /> \
+                                        <filter type="and"> \
+                                            <condition attribute="im360_bcn" operator="eq" value="${bcn}" /> \
+                                            <condition attribute="statecode" operator="eq" value="0" /> \
+                                        </filter> \
+                                    </entity> \
+                                </fetch>`;
+
+                return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
+                    function success(result) {
+                        if (result != null) {
+                            return result.entities && result.entities.length > 0 ? result.entities[0] : null;
+                        } else {
+                            console.error(`Zendesk - Cannot get account, the fetchXml is: ${fetchXml}`);
+                            return null;
+                        }
+                    },
+                    function (error) {
+                        console.error(`Zendesk - ${error.message}`);
+                        return null;
+                    }
+                );
+            };
+
+            const escapeXml = (value) => {
+                return value
+                    .replace(/&/g, "&amp;");
+                    // .replace(/</g, "&lt;")
+                    // .replace(/>/g, "&gt;")
+                    // .replace(/"/g, "&quot;")
+                    // .replace(/'/g, "&apos;")
+            }
         </script>
 
         <style scoped>

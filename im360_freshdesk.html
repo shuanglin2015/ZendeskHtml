@@ -399,19 +399,19 @@
             },
             methods: {
                 async getZendeskConfig() {
-                    let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                         <entity name='im360_configuration'> \
-                             <attribute name='im360_configurationid'/> \
-                             <attribute name='im360_value'/> \
-                             <attribute name='im360_value2'/> \
-                             <attribute name='im360_value3'/> \
-                             <attribute name='im360_value4'/> \
-                             <filter type='and'> \
-                                 <condition attribute='im360_name' operator='eq' value='FreshdeskAPI' /> \
-                                 <condition attribute='statuscode' operator='eq' value='1' /> \
+                    let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                         <entity name="im360_configuration"> \
+                             <attribute name="im360_configurationid"/> \
+                             <attribute name="im360_value"/> \
+                             <attribute name="im360_value2"/> \
+                             <attribute name="im360_value3"/> \
+                             <attribute name="im360_value4"/> \
+                             <filter type="and"> \
+                                 <condition attribute="im360_name" operator="eq" value="FreshdeskAPI" /> \
+                                 <condition attribute="statecode" operator="eq" value="0" /> \
                              </filter> \
                          </entity> \
-                         </fetch>";
+                         </fetch>`;
 
                     let pageTitle = this.pageTitle;
                     return Xrm.WebApi.retrieveMultipleRecords("im360_configuration", "?fetchXml=" + fetchXml).then(
@@ -434,18 +434,19 @@
                 async getAccountCountryAndBCN() {
                     let accountid = this.getValueParam();
                     if (accountid) {
-                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                            <entity name='account'> \
-                                <attribute name='im360_bcn' /> \
-                                <attribute name='im360_armid' /> \
-                                <link-entity name='im360_country' from='im360_countryid' to='im360_country' link-type='inner'> \
-                                    <attribute name='im360_name' alias='CountryName' /> \
+                        let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                            <entity name="account"> \
+                                <attribute name="im360_bcn" /> \
+                                <attribute name="im360_armid" /> \
+                                <link-entity name="im360_country" from="im360_countryid" to="im360_country" link-type="inner"> \
+                                    <attribute name="im360_name" alias="CountryName" /> \
                                 </link-entity> \
-                                <filter type='and'> \
-                                    <condition attribute='accountid' operator='eq' value='" + accountid + "' /> \
+                                <filter type="and"> \
+                                    <condition attribute="accountid" operator="eq" value="${accountid}" /> \
+                                    <condition attribute="statecode" operator="eq" value="0" /> \
                                 </filter> \
                             </entity> \
-                            </fetch>";
+                            </fetch>`;
 
                         let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("account", "?fetchXml=" + fetchXml).then(
@@ -474,15 +475,16 @@
                         return configName;
                     }
                     if (configKey) {
-                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                            <entity name='im360_zendeskconfig'> \
-                                <attribute name='im360_description' /> \
-                                <filter type='and'> \
-                                    <condition attribute='im360_key' operator='eq' value='" + configKey + "' /> \
-                                    <condition attribute='im360_category' operator='eq' value='users' /> \
+                        let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                            <entity name="im360_zendeskconfig"> \
+                                <attribute name="im360_description" /> \
+                                <filter type="and"> \
+                                    <condition attribute="im360_key" operator="eq" value="${configKey}" /> \
+                                    <condition attribute="im360_category" operator="eq" value="users" /> \
+                                    <condition attribute="statecode" operator="eq" value="0" /> \
                                 </filter> \
                             </entity> \
-                            </fetch>";
+                            </fetch>`;
 
                         let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
@@ -516,15 +518,16 @@
                         return configValue;
                     }
                     if (configKey) {
-                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                            <entity name='im360_zendeskconfig'> \
-                                <attribute name='im360_value' /> \
-                                <filter type='and'> \
-                                    <condition attribute='im360_key' operator='eq' value='" + configKey + "' /> \
-                                    <condition attribute='im360_category' operator='eq' value='users' /> \
+                        let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                            <entity name="im360_zendeskconfig"> \
+                                <attribute name="im360_value" /> \
+                                <filter type="and"> \
+                                    <condition attribute="im360_key" operator="eq" value="${configKey}" /> \
+                                    <condition attribute="im360_category" operator="eq" value="users" /> \
+                                    <condition attribute="statecode" operator="eq" value="0" /> \
                                 </filter> \
                             </entity> \
-                            </fetch>";
+                            </fetch>`;
 
                         let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
@@ -558,15 +561,16 @@
                         return configName;
                     }
                     if (configKey) {
-                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                            <entity name='im360_zendeskconfig'> \
-                                <attribute name='im360_name' /> \
-                                <filter type='and'> \
-                                    <condition attribute='im360_key' operator='eq' value='" + configKey + "' /> \
-                                    <condition attribute='im360_category' operator='eq' value='users' /> \
+                        let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                            <entity name="im360_zendeskconfig"> \
+                                <attribute name="im360_name" /> \
+                                <filter type="and"> \
+                                    <condition attribute="im360_key" operator="eq" value="${configKey}" /> \
+                                    <condition attribute="im360_category" operator="eq" value="users" /> \
+                                    <condition attribute="statecode" operator="eq" value="0" /> \
                                 </filter> \
                             </entity> \
-                            </fetch>";
+                            </fetch>`;
 
                         let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
@@ -600,15 +604,16 @@
                         return configName;
                     }
                     if (configValue) {
-                        let fetchXml = "<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='true'> \
-                            <entity name='im360_zendeskconfig'> \
-                                <attribute name='im360_name' /> \
-                                <filter type='and'> \
-                                    <condition attribute='im360_value' operator='eq' value='" + configValue + "' /> \
-                                    <condition attribute='im360_category' operator='eq' value='ticket_fields' /> \
+                        let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                            <entity name="im360_zendeskconfig"> \
+                                <attribute name="im360_name" /> \
+                                <filter type="and"> \
+                                    <condition attribute="im360_value" operator="eq" value="${configValue}" /> \
+                                    <condition attribute="im360_category" operator="eq" value="ticket_fields" /> \
+                                    <condition attribute="statecode" operator="eq" value="0" /> \
                                 </filter> \
                             </entity> \
-                            </fetch>";
+                            </fetch>`;
 
                         let pageTitle = this.pageTitle;
                         return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
@@ -658,55 +663,56 @@
 
                     // IM360 BCN must exist, it's from the account record:
                     if (Global_im360_bcn && Global_im360_bcn.length > 0) {
-                        let filterOrForBCN = `<condition attribute='im360_ingrambcn' operator='like' value='%${Global_im360_bcn}%' />`;
+                        let filterOrForBCN = `<condition attribute="im360_ingrambcn" operator="like" value="%${Global_im360_bcn}%" />`;
                         // add "-" after the second digits, for example: "41389412" -> "41-389412"
                         if (Global_im360_bcn.length > 2) {
                             let bcnWithDash = Global_im360_bcn.slice(0, 2) + "-" + Global_im360_bcn.slice(2);
-                            filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${bcnWithDash}%' />`;
+                            filterOrForBCN += `<condition attribute="im360_ingrambcn" operator="like" value="%${bcnWithDash}%" />`;
                         }
                         if (Global_im360_armid && Global_im360_armid.length > 0) {
-                            filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${Global_im360_armid}%' />`;
+                            filterOrForBCN += `<condition attribute="im360_ingrambcn" operator="like" value="%${Global_im360_armid}%" />`;
                             if (Global_im360_armid.length > 2) {
                                 // IM360 CMP ID possible value (with single quote): '1000003522'
                                 let cmpIdWithoutSingleQuote = Global_im360_armid.replace(/'/g, "");
-                                filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${cmpIdWithoutSingleQuote}%' />`;
+                                filterOrForBCN += `<condition attribute="im360_ingrambcn" operator="like" value="%${cmpIdWithoutSingleQuote}%" />`;
 
                                 // add "-" after the second digits, for example: "1000003522" -> "10-00003522"
                                 let cmpWithDash = cmpIdWithoutSingleQuote.slice(0, 2) + "-" + cmpIdWithoutSingleQuote.slice(2);
-                                filterOrForBCN += `<condition attribute='im360_ingrambcn' operator='like' value='%${cmpWithDash}%' />`;
+                                filterOrForBCN += `<condition attribute="im360_ingrambcn" operator="like" value="%${cmpWithDash}%" />`;
                             }
                         }
 
-                        let fetchXml = `<fetch top='5000'> \
-                                            <entity name='im360_zendesktickets'> \
-                                                <attribute name='im360_accountid' /> \
-                                                <attribute name='im360_country' /> \
-                                                <attribute name='im360_created_at' /> \
-                                                <attribute name='im360_domain' /> \
-                                                <attribute name='im360_ingrambcn' /> \
-                                                <attribute name='im360_partneremailaddress' /> \
-                                                <attribute name='im360_priority' /> \
-                                                <attribute name='im360_resellername' /> \
-                                                <attribute name='im360_resolved_at' /> \
-                                                <attribute name='im360_resolvehours' /> \
-                                                <attribute name='im360_status' /> \
-                                                <attribute name='im360_ticketid' /> \
-                                                <attribute name='im360_name' /> \
-                                                <attribute name='im360_updated_at' /> \
-                                                    <filter type='and'> \
-                                                        <condition attribute='im360_country' operator='eq' value='${Global_country_name}' /> \
-                                                        <condition attribute='im360_ingrambcn' operator='ne' value='Review and Update (Do Not Use)' /> \
-                                                        <condition attribute='im360_ingrambcn' operator='ne' value='na' /> \
-                                                        <condition attribute='im360_ingrambcn' operator='ne' value='NA' /> \
-                                                        <condition attribute='im360_ingrambcn' operator='ne' value='.' /> \
-                                                        <condition attribute='im360_ingrambcn' operator='ne' value='x' /> \
-                                                        <condition attribute='im360_ingrambcn' operator='not-null'  /> \
-                                                        <filter type='or'> ${filterOrForBCN} </filter> \
-                                                        <condition attribute='im360_domain' operator='ne' value='Sales Esc (Legacy)' /> \
-                                                        <condition attribute='im360_domain' operator='ne' value='Sales Esc�(Legacy)' /> \
-                                                        <condition attribute='im360_domain' operator='ne' value='MS Escalations (Legacy)' /> \
+                        let fetchXml = `<fetch top="5000"> \
+                                            <entity name="im360_zendesktickets"> \
+                                                <attribute name="im360_accountid" /> \
+                                                <attribute name="im360_country" /> \
+                                                <attribute name="im360_created_at" /> \
+                                                <attribute name="im360_domain" /> \
+                                                <attribute name="im360_ingrambcn" /> \
+                                                <attribute name="im360_partneremailaddress" /> \
+                                                <attribute name="im360_priority" /> \
+                                                <attribute name="im360_resellername" /> \
+                                                <attribute name="im360_resolved_at" /> \
+                                                <attribute name="im360_resolvehours" /> \
+                                                <attribute name="im360_status" /> \
+                                                <attribute name="im360_ticketid" /> \
+                                                <attribute name="im360_name" /> \
+                                                <attribute name="im360_updated_at" /> \
+                                                    <filter type="and"> \
+                                                        <condition attribute="im360_country" operator="eq" value="${Global_country_name}" /> \
+                                                        <condition attribute="im360_ingrambcn" operator="ne" value="Review and Update (Do Not Use)" /> \
+                                                        <condition attribute="im360_ingrambcn" operator="ne" value="na" /> \
+                                                        <condition attribute="im360_ingrambcn" operator="ne" value="NA" /> \
+                                                        <condition attribute="im360_ingrambcn" operator="ne" value="." /> \
+                                                        <condition attribute="im360_ingrambcn" operator="ne" value="x" /> \
+                                                        <condition attribute="im360_ingrambcn" operator="not-null"  /> \
+                                                        <filter type="or"> ${filterOrForBCN} </filter> \
+                                                        <condition attribute="im360_domain" operator="ne" value="Sales Esc (Legacy)" /> \
+                                                        <condition attribute="im360_domain" operator="ne" value="Sales Esc�(Legacy)" /> \
+                                                        <condition attribute="im360_domain" operator="ne" value="MS Escalations (Legacy)" /> \
+                                                        <condition attribute="statecode" operator="eq" value="0" /> \
                                                     </filter> \
-                                                <order descending='true' attribute='im360_created_at' /> \
+                                                <order descending="true" attribute="im360_created_at" /> \
                                             </entity> \
                                         </fetch>`;
 
