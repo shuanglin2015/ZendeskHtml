@@ -35,6 +35,8 @@
             let Global_im360_bcn = '';
             let Global_im360_armid = '';
             let Global_initialized = false;
+            let Global_isInvalidInput = false;
+            let Global_isNotifyVisible = false;
 
             let app = new Vue({
                 el: '#app',
@@ -268,6 +270,12 @@
                         console.log(loadOptions.filter);
 
                         let results = [];
+                        if (Global_isInvalidInput) {
+                            Global_isInvalidInput = false;
+                            const errMsg = "Invalid filter input detected. Please enter supported values and try again.";
+                            showNotifyOnce(errMsg, "error", 600);
+                            return results;
+                        }
                         let bcnFilters = '';
                         let getActiveCountries = this.getActiveCountries;
                         let getColumnValue = this.getColumnValue;
@@ -529,6 +537,10 @@
                             } 
                         }
 
+                        if (results.length == 0) {
+                            showNotifyOnce("No tickets found matching the filter criteria.");
+                        }
+
                         return results;
                     },
 
@@ -720,6 +732,21 @@
                                         let searchName = '';
                                         let fieldName = '';
                                         const filter = e.value && e.value.trim();
+                                        const bcnFullName = "columns[2].filterValue";
+                                        const subjectFullName = "columns[5].filterValue";
+                                        // const INVALID_CHARS_REGEX = /[<>[\]{}()"';:`|\\\/&%$#!+=*?^~]/;
+                                        const INVALID_CHARS_REGEX = /[<>[\]{}"';:`|\\\/&%$#!+=*?^~]/;  // remove "(" and ")"
+                                        if (INVALID_CHARS_REGEX.test(filter) && e.fullName != bcnFullName && e.fullName != subjectFullName) {
+                                            Global_isInvalidInput = true;
+                                        }
+                                        const domainFullName = "columns[7].filterValue";
+                                        const platformFullName = "columns[9].filterValue";
+                                        if (e.fullName != bcnFullName && e.fullName != subjectFullName && e.fullName != domainFullName && e.fullName != platformFullName) {
+                                            if (filter.includes('(') || filter.includes(')')) {
+                                                Global_isInvalidInput = true;
+                                            }
+                                        }
+                                        
                                         switch (e.fullName) {
                                             case "columns[0].filterValue":
                                                 searchName = 'TicketId';
@@ -1179,6 +1206,26 @@
                     // .replace(/>/g, "&gt;")
                     // .replace(/"/g, "&quot;")
                     // .replace(/'/g, "&apos;")
+            }
+
+            const showNotifyOnce = (message, type = "warning", maxWidth = 500, displayTime = 6000) => {
+                if (isNotifyVisible) return;
+
+                isNotifyVisible = true;
+
+                DevExpress.ui.notify({
+                    message,
+                    type,
+                    displayTime,
+                    position: {
+                        at: "top right",
+                        my: "top right"
+                    },
+                    maxWidth,
+                    onHidden() {
+                        isNotifyVisible = false;
+                    }
+                });
             }
         </script>
 
