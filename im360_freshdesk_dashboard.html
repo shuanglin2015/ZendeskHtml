@@ -1209,9 +1209,9 @@
             }
 
             const showNotifyOnce = (message, type = "warning", maxWidth = 500, displayTime = 6000) => {
-                if (isNotifyVisible) return;
+                if (Global_isNotifyVisible) return;
 
-                isNotifyVisible = true;
+                Global_isNotifyVisible = true;
 
                 DevExpress.ui.notify({
                     message,
@@ -1223,7 +1223,7 @@
                     },
                     maxWidth,
                     onHidden() {
-                        isNotifyVisible = false;
+                        Global_isNotifyVisible = false;
                     }
                 });
             }
