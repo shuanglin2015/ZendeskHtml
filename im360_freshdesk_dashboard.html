@@ -732,20 +732,15 @@
                                         let searchName = '';
                                         let fieldName = '';
                                         const filter = e.value && e.value.trim();
-                                        const bcnFullName = "columns[2].filterValue";
-                                        const subjectFullName = "columns[5].filterValue";
-                                        // const INVALID_CHARS_REGEX = /[<>[\]{}()"';:`|\\\/&%$#!+=*?^~]/;
-                                        const INVALID_CHARS_REGEX = /[<>[\]{}"';:`|\\\/&%$#!+=*?^~]/;  // remove "(" and ")"
-                                        if (INVALID_CHARS_REGEX.test(filter) && e.fullName != bcnFullName && e.fullName != subjectFullName) {
-                                            Global_isInvalidInput = true;
-                                        }
+                                        const statusFullName = "columns[6].filterValue";
                                         const domainFullName = "columns[7].filterValue";
+                                        const priorityFullName = "columns[8].filterValue";
                                         const platformFullName = "columns[9].filterValue";
-                                        if (e.fullName != bcnFullName && e.fullName != subjectFullName && e.fullName != domainFullName && e.fullName != platformFullName) {
-                                            if (filter.includes('(') || filter.includes(')')) {
-                                                Global_isInvalidInput = true;
-                                            }
-                                        }
+
+                                        const statusArr = ["New","Open","Pending","On-hold","Solved","Closed"];
+                                        const domainArr = ["Billing and Invoice","CloudBlue Support (Legacy)","ECSNA (Legacy)","Integrations-Cloud","Integrations-TS","Manager Esc (Legacy)","MS Escalations (Legacy)","Multicloud Support Fraud (Legacy)","Order Placement","Sales Escï¿½(Legacy)","Subscription Management","TSEL2ï¿½(Legacy)","User Interface (UX)","Vendor Platform","Vendor Technical Support","VIP Support (Legacy)","X4AL1L2 (Legacy)","Review and Update (Do Not Use)"];
+                                        const priorityArr = ["Urgent","High","Normal","Low"];
+                                        const platformArr = ["Connect","X4C","X4A","X4V","XVS","XI","Review and Update (Do Not Use)"];
                                         
                                         switch (e.fullName) {
                                             case "columns[0].filterValue":
@@ -780,22 +775,70 @@
                                             case "columns[6].filterValue":
                                                 searchName = 'Status';
                                                 fieldName = 'im360_status';
-                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+
+                                                if (filter) {
+                                                    Global_isInvalidInput = true;
+                                                    statusArr.forEach(status => {
+                                                        if (status.toLowerCase().indexOf(filter.toLowerCase()) >= 0) {
+                                                            Global_isInvalidInput = false;
+                                                        }
+                                                    });
+                                                }
+
+                                                if (Global_isInvalidInput == false) {
+                                                    Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                }
                                                 break;
                                             case "columns[7].filterValue":
                                                 searchName = 'Domain';
                                                 fieldName = 'im360_domain';
-                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+
+                                                if (filter) {
+                                                    Global_isInvalidInput = true;
+                                                    domainArr.forEach(domain => {
+                                                        if (domain.toLowerCase().indexOf(filter.toLowerCase()) >= 0) {
+                                                            Global_isInvalidInput = false;
+                                                        }
+                                                    });
+                                                }
+
+                                                if (Global_isInvalidInput == false) {
+                                                    Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                }
                                                 break;
                                             case "columns[8].filterValue":
                                                 searchName = 'Priority';
                                                 fieldName = 'im360_priority';
-                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+
+                                                if (filter) {
+                                                    Global_isInvalidInput = true;
+                                                    priorityArr.forEach(priority => {
+                                                        if (priority.toLowerCase().indexOf(filter.toLowerCase()) >= 0) {
+                                                            Global_isInvalidInput = false;
+                                                        }
+                                                    });
+                                                }
+
+                                                if (Global_isInvalidInput == false) {
+                                                    Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                }
                                                 break;
                                             case "columns[9].filterValue":
                                                 searchName = 'Platform';
                                                 fieldName = 'im360_ticketsubjectline';
-                                                Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+
+                                                if (filter) {
+                                                    Global_isInvalidInput = true;
+                                                    platformArr.forEach(platform => {
+                                                        if (platform.toLowerCase().indexOf(filter.toLowerCase()) >= 0) {
+                                                            Global_isInvalidInput = false;
+                                                        }
+                                                    });
+                                                }
+
+                                                if (Global_isInvalidInput == false) {
+                                                    Global_finalFilterArr = filterColumn(searchName, filter, Global_finalFilterArr, fieldName);
+                                                } 
                                                 break;
                                         }
                                     }
