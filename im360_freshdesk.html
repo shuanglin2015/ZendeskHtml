@@ -1126,9 +1126,24 @@
                                                 let agentData = jsonIdForAssignee ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonIdForAssignee, this.funcCodeForJsonById) : '';
                                                 result.strAgent = agentData.user ? agentData.user.name : '-';
                                             }
+
+                                            // XDUS-6963 - Update attachment URLs to route through API
+                                            const zendeskImagePath = "https://ingrammicrosupport.zendesk.com/collaboration/graphql/attachments/download/";
+                                            if (result.description) {
+                                                result.description = result.description.replaceAll(zendeskImagePath, `${zendeskBaseUrl}/getZendeskImage?imageGuid=`);
+                                            }
+
                                             result.conversations = await this.getConversation(ticketId, zendeskBaseUrl, this.funcCodeForComments, MAX_RETRIES, this.computeBackoff, this.sleep, hideLoadingPage);
                                             if (result.conversations) {
                                                 for (let item of result.conversations) {
+                                                    // XDUS-6963 - Update attachment URLs to route through API
+                                                    if (item.body) {
+                                                        item.body = item.body.replaceAll(zendeskImagePath, `${zendeskBaseUrl}/getZendeskImage?imageGuid=`);
+                                                    }
+                                                    if (item.html_body) {
+                                                        item.html_body = item.html_body.replaceAll(zendeskImagePath, `${zendeskBaseUrl}/getZendeskImage?imageGuid=`);
+                                                    }
+
                                                     jsonId = item.author_id;
                                                     result.author_email = await getZendeskConfigEmailByKey(jsonId);
                                                     item.role = await getZendeskConfigRoleByKey(jsonId);
