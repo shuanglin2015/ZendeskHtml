@@ -983,7 +983,12 @@
                 async getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) {
                     let result = 'N/A';
                     if (jsonId && jsonId !== 'null') {
-                        const response = await axios.get(`${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`);
+                        let fullUrl = `${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`;
+                        if (zendeskBaseUrl.startsWith('SSOT_')) {
+                            fullUrl = fullUrl.replace('SSOT_', '');
+                            fullUrl = fullUrl + '&dataSourceType=SSOT';
+                        }
+                        const response = await axios.get(fullUrl);
 
                         result = response.data ? response.data : '';
                     }
@@ -1075,7 +1080,11 @@
                     getZendeskConfigEmailByKey, getZendeskConfigRoleByKey, getZendeskConfigNameByKey) {
                     showLoadingPage && showLoadingPage();
                     this.showLoadingPage && this.showLoadingPage();
-                    const fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}&userName=${userName}`;
+                    let fullUrl = `${zendeskBaseUrl}/getDataById?code=${funcCode}&category=tickets&itemId=${ticketId}&userName=${userName}`;
+                    if (zendeskBaseUrl.startsWith('SSOT_')) {
+                        fullUrl = fullUrl.replace('SSOT_', '');
+                        fullUrl = fullUrl + '&dataSourceType=SSOT';
+                    }
                     console.log(fullUrl);
                     let pageTitle = this.pageTitle || 'Zendesk Ticket Viewer';
                     // API Request & Retry Configuration: Maximum number of retry attempts for failed API calls
