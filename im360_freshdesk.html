@@ -1000,13 +1000,24 @@
                     if (ticketId && ticketId !== 'null') {
                         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
                             try {
-                                    const response = await axios.get(`${zendeskBaseUrl}/getCommentById?code=${funcCodeForComments}&itemId=${ticketId}`);
+                                    let fullUrl = `${zendeskBaseUrl}/getCommentById?code=${funcCodeForComments}&itemId=${ticketId}`;
+                                    if (zendeskBaseUrl.startsWith('SSOT_')) {
+                                        fullUrl = fullUrl.replace('SSOT_', '');
+                                        fullUrl = fullUrl + '&dataSourceType=SSOT';
+                                    }
+                                    const response = await axios.get(fullUrl);
 
                                     // 200 OK
                                     if (response.status === 200) {
                                         result = response.data ? response.data.comments : '';
+                                        result.forEach((item) => {
+                                            if (item.created_at && item.created_at.value) {
+                                                item.created_at = item.created_at.value;
+                                            }
+                                        })
+                                        // sort it by created_at so the most recent items come first:
                                         result && result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                                        //const resultWithoutLastItem = result.slice(0, -1);
+                                        // const resultWithoutLastItem = result.slice(0, -1);
                                         return result;
                                     }
 
@@ -1176,6 +1187,9 @@
                                                 }
                                             }
                                             
+                                            if (typeof result.custom_fields === 'string') {
+                                                result.custom_fields = JSON.parse(result.custom_fields);
+                                            }
                                             let domainFieldId = isStage ? 31042462931476 : 34698829065236;
                                             const objDomain = result.custom_fields && result.custom_fields.find(item => item.id === domainFieldId);
                                             const domainValue = objDomain ? objDomain.value : '';
