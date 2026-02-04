@@ -58,7 +58,7 @@
 
                     <div v-if="record.created_at" class="recordTags">
                         <strong class="boldDue">Date created:  </strong>
-                        {{record.created_at.substring(0, 10)}}
+                        {{record.created_at && record.created_at.substring && record.created_at.substring(0, 10)}}
                         
                     </div>
 
@@ -1132,6 +1132,9 @@
                                             };
                                             delete result.ticket;
                                         
+                                            if (result.created_at && result.created_at.value) {
+                                                result.created_at = result.created_at.value;
+                                            }
                                             let jsonPath = 'users';
                                             let jsonId = result.requester_id;
                                             result.requesterEmail = await getZendeskConfigEmailByKey(jsonId);
