@@ -284,6 +284,8 @@
                         let getValueForReseller = this.getValueForReseller;
                         let getValueForDomain = this.getValueForDomain;
                         let getValueForPlatform = this.getValueForPlatform;
+                        let getZendeskConfigEmailByKey = this.getZendeskConfigEmailByKey;
+                        let getJsonById = this.getJsonById;
 
                         if (Global_country_name) {
                             let countryFilter = `<condition attribute="im360_country" operator="eq" value="${Global_country_name}" />`;
@@ -462,6 +464,9 @@
 
                                     // No Response Necessary (NRN) flag
                                     let isNRN = false;
+                                    let isChild = false;
+                                    let isDoNotReply = false;
+
                                     if (item && item.tags && Array.isArray(item.tags)) {
                                         item.tags.forEach(tag => {
                                             if (isNRNTicket(tag)) {
@@ -470,13 +475,62 @@
                                         });
                                     }
 
-                                    if (isNRN) {
-                                        console.log(`Zendesk - Ticket ID ${ticketId} is marked as No Response Necessary (NRN) ticket.`);
-                                        // show alert dialog to inform the user
-                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Ticket with ID ${ticketId} has NRN tags. Please enter a valid ticket ID.` });
+                                    if (!isNRN) {
+                                        let jsonPath = 'users';
+                                        let jsonId = item.requester_id;
+                                        let requesterEmail = await getZendeskConfigEmailByKey(jsonId);
+                                        if (!requesterEmail) {
+                                            let userData = jsonId ? await getJsonById(Global_zendeskBaseUrl, jsonPath, jsonId, Global_funcCodeForJsonById) : '';
+                                            requesterEmail = userData.user ? userData.user.email : '';
+                                        }
+
+                                        if (item && item.problem_id && item.problem_id != null) {
+                                            if (requesterEmail) {
+                                                if (requesterEmail.toLowerCase() === 'msftpc@microsoft.com' || requesterEmail.toLowerCase() === 'support@mail.support.microsoft.com') {
+                                                    isChild = true;
+                                                }
+                                            }
+                                        }
+
+                                        if (requesterEmail) {
+                                            if (requesterEmail.toLowerCase() === 'bhushan.mb@ingrammicro.com' || requesterEmail.toLowerCase() === 'francisco.reguero@ingrammicro.com'
+                                                    || requesterEmail.toLowerCase() === 'komal.kale@ingrammicro.com' || requesterEmail.toLowerCase() === 'laura.kim@ingrammicro.com'
+                                                    || requesterEmail.toLowerCase() === 'maria.vicente@ingrammicro.com' || requesterEmail.toLowerCase() === 'pradeepa.sreenivasan@ingrammicro.com'
+                                                    || requesterEmail.toLowerCase() === 'pranjal.thakur@ingrammicro.com' || requesterEmail.toLowerCase() === 'sandeep.deshmukh@ingrammicro.com'
+                                                    || requesterEmail.toLowerCase() === 'seema.sharma@ingrammicro.com' || requesterEmail.toLowerCase() === 'sureshkumar.krishnamoorthy@ingrammicro.com') {
+                                                isChild = true;
+                                            }
+                                        }
+
+                                        if (requesterEmail) {
+                                            if (requesterEmail.toLowerCase().includes('do-not-reply') || requesterEmail.toLowerCase().includes('no-reply')) {
+                                                isDoNotReply = true;
+                                            }
+                                        }
+
+                                        if (!isChild) {
+                                            let legacyParentId = isStage ? 34395775209108 : 34691458866068;
+                                            const objParentId = item.custom_fields && item.custom_fields.find(item => item.id === legacyParentId);
+                                            const parentIdValue = objParentId ? objParentId.value : '';
+                                            if (parentIdValue && parentIdValue.length > 0) {
+                                                isChild = true;
+                                            }
+                                        }
                                     }
 
-                                    if (!isNRN && item && item.id && item.subject && Object.keys(item).length > 0) {
+                                    let isInvalidTicket = false;
+                                    if (isNRN || isChild || isDoNotReply) {
+                                        isInvalidTicket = true;
+                                    }
+
+                                    if (isInvalidTicket) {
+                                        console.log(`Zendesk - Ticket ID ${ticketId} is marked as No Response Necessary (NRN) ticket.`);
+                                        // show alert dialog to inform the user
+                                        let invalidTicketWarning = `Ticket ID ${ticketId} is invalid. It may be a child ticket, a spam ticket, contain NRN tags, or belong to a different group. Please enter a valid ticket ID.`;
+                                        Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: invalidTicketWarning });
+                                    }
+
+                                    if (!isInvalidTicket && item && item.id && item.subject && Object.keys(item).length > 0) {
                                         let countryFieldId = isStage ? 31959436739604 : 35138178531732;
                                         const objCountry = item.custom_fields && item.custom_fields.find(item => item.id === countryFieldId);
                                         const countryValue = objCountry ? objCountry.value : '';
@@ -884,6 +938,64 @@
                         });
                     },
 
+                    async getJsonById(zendeskBaseUrl, jsonPath, jsonId, funcCodeForJsonById) {
+                        let result = 'N/A';
+                        if (jsonId && jsonId !== 'null') {
+                            let fullUrl = `${zendeskBaseUrl}/getJsonById?jsonPath=${jsonPath}&jsonId=${jsonId}&code=${funcCodeForJsonById}`;
+                            if (zendeskBaseUrl.startsWith('SSOT_')) {
+                                fullUrl = fullUrl.replace('SSOT_', '');
+                                fullUrl = fullUrl + '&dataSourceType=SSOT';
+                            }
+                            const response = await axios.get(fullUrl);
+
+                            result = response.data ? response.data : '';
+                        }
+                        return result;
+                    },
+
+                    async getZendeskConfigEmailByKey(configKey) {
+                        let configName = '';
+                        if (!configKey) {
+                            return configName;
+                        }
+                        if (configKey) {
+                            let fetchXml = `<fetch version="1.0" output-format="xml-platform" mapping="logical" distinct="true"> \
+                                <entity name="im360_zendeskconfig"> \
+                                    <attribute name="im360_name" /> \
+                                    <filter type="and"> \
+                                        <condition attribute="im360_key" operator="eq" value="${configKey}" /> \
+                                        <condition attribute="im360_category" operator="eq" value="users" /> \
+                                        <condition attribute="statecode" operator="eq" value="0" /> \
+                                    </filter> \
+                                </entity> \
+                                </fetch>`;
+
+                            let pageTitle = this.pageTitle;
+                            return Xrm.WebApi.retrieveMultipleRecords("im360_zendeskconfig", "?fetchXml=" + fetchXml).then(
+                                function success(result) {
+                                    if (result != null && result.entities && result.entities.length > 0) {
+                                        let zendeskConfig = result.entities[0];
+                                        if (zendeskConfig) {
+                                            configName = zendeskConfig.im360_name;
+                                        }
+
+                                    } else {
+                                        console.log(`${pageTitle} - Cannot get Zendesk Config User Email by Key, will get it from Zendesk API, the fetchXml is: ${fetchXml}`);
+                                        configName = null;
+                                    }
+                                    return configName;
+                                },
+                                function (error) {
+                                    console.error(`${pageTitle} - ${error.message}`);
+                                    this.hideLoadingPage && this.hideLoadingPage();
+                                    return null;
+                                }
+                            );
+                        } else{
+                            return null;
+                        }
+                    },
+
                     async getValueForPlatform(fieldValue, Global_zendeskBaseUrl, Global_funcCodeForJsonById, getColumnValue) {
                         let fieldName = 'im360_name';
                         
@@ -1176,7 +1288,13 @@
                     "us_modin_x2_sbo_nrn_sender",
                     "us_modin_x3_autoclose_nrn",
                     "us_modin_x3_nrn_sender",
-                    "us_modin_x3_panduit_nrn_sender_panduit"
+                    "us_modin_x3_panduit_nrn_sender_panduit",
+                    "us_modin_x3_sbo_nrn_sender",
+                    "gbl_support_nrn_sender",
+                    "order_management_proactive_notification",
+                    "gbl_support_spam_message",
+                    "gbl_partner_support_spam_message",
+                    "closed_by_merge"
                 ]);
 
                 return trueTags.has(tag) ? true : false;

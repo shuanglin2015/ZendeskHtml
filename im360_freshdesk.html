@@ -1123,7 +1123,7 @@
                                         }
 
                                         let jsonPath = 'users';
-                                        let jsonId = result.requester_id;
+                                        let jsonId = item.requester_id;
                                         result.requesterEmail = await getZendeskConfigEmailByKey(jsonId);
                                         if (!result.requesterEmail) {
                                             let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
@@ -1134,25 +1134,25 @@
                                         let isChild = false;
                                         if (item && item.problem_id && item.problem_id != null) {
                                             if (requesterEmail) {
-                                                if (toLowerCase(requesterEmail) === 'msftpc@microsoft.com' || toLowerCase(requesterEmail) === 'support@mail.support.microsoft.com') {
+                                                if (requesterEmail.toLowerCase() === 'msftpc@microsoft.com' || requesterEmail.toLowerCase() === 'support@mail.support.microsoft.com') {
                                                     isChild = true;
                                                 }
                                             }
                                         }
 
                                         if (requesterEmail) {
-                                            if (toLowerCase(requesterEmail) === 'bhushan.mb@ingrammicro.com' || toLowerCase(requesterEmail) === 'francisco.reguero@ingrammicro.com'
-                                                    || toLowerCase(requesterEmail) === 'komal.kale@ingrammicro.com' || toLowerCase(requesterEmail) === 'laura.kim@ingrammicro.com'
-                                                    || toLowerCase(requesterEmail) === 'maria.vicente@ingrammicro.com' || toLowerCase(requesterEmail) === 'pradeepa.sreenivasan@ingrammicro.com'
-                                                    || toLowerCase(requesterEmail) === 'pranjal.thakur@ingrammicro.com' || toLowerCase(requesterEmail) === 'sandeep.deshmukh@ingrammicro.com'
-                                                    || toLowerCase(requesterEmail) === 'seema.sharma@ingrammicro.com' || toLowerCase(requesterEmail) === 'sureshkumar.krishnamoorthy@ingrammicro.com') {
+                                            if (requesterEmail.toLowerCase() === 'bhushan.mb@ingrammicro.com' || requesterEmail.toLowerCase() === 'francisco.reguero@ingrammicro.com'
+                                                    || requesterEmail.toLowerCase() === 'komal.kale@ingrammicro.com' || requesterEmail.toLowerCase() === 'laura.kim@ingrammicro.com'
+                                                    || requesterEmail.toLowerCase() === 'maria.vicente@ingrammicro.com' || requesterEmail.toLowerCase() === 'pradeepa.sreenivasan@ingrammicro.com'
+                                                    || requesterEmail.toLowerCase() === 'pranjal.thakur@ingrammicro.com' || requesterEmail.toLowerCase() === 'sandeep.deshmukh@ingrammicro.com'
+                                                    || requesterEmail.toLowerCase() === 'seema.sharma@ingrammicro.com' || requesterEmail.toLowerCase() === 'sureshkumar.krishnamoorthy@ingrammicro.com') {
                                                 isChild = true;
                                             }
                                         }
 
                                         let isDoNotReply = false;
                                         if (requesterEmail) {
-                                            if (toLowerCase(requesterEmail).includes('do-not-reply') || toLowerCase(requesterEmail).includes('no-reply')) {
+                                            if (requesterEmail.toLowerCase().includes('do-not-reply') || requesterEmail.toLowerCase().includes('no-reply')) {
                                                 isDoNotReply = true;
                                             }
                                         }
