@@ -900,9 +900,10 @@
                                 return;
                             }
 
-                            if (ticket === 'isNRN') {
-                                console.log(`Zendesk - Ticket ID ${ticketId} is marked as No Response Necessary (NRN) ticket.`);
-                                Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: `Ticket with ID ${ticketId} has NRN tags. Please enter a valid ticket ID.` });
+                            if (ticket === 'isInvalidTicket') {
+                                console.log(`Zendesk - Ticket ID ${ticketId} is marked as Invalid.`);
+                                const invalidTicketWarning = `Ticket ID ${ticketId} is invalid. It may be a child ticket, a spam ticket, contain NRN tags, or belong to a different group. Please enter a valid ticket ID.`;
+                                Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: invalidTicketWarning });
                                 return;
                             }
 
@@ -1110,9 +1111,9 @@
                                 if (response.status === 200) {
                                     let result = response.data;
                                     if (result) {
+                                        let item = result && result.ticket;
                                         // No Response Necessary (NRN) flag
                                         let isNRN = false;
-                                        let item = result && result.ticket;
                                         if (item && item.tags && Array.isArray(item.tags)) {
                                             item.tags.forEach(tag => {
                                                 if (isNRNTicket(tag)) {
@@ -1121,11 +1122,55 @@
                                             });
                                         }
 
-                                        if (isNRN) {
-                                            result = 'isNRN';
+                                        let jsonPath = 'users';
+                                        let jsonId = result.requester_id;
+                                        result.requesterEmail = await getZendeskConfigEmailByKey(jsonId);
+                                        if (!result.requesterEmail) {
+                                            let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
+                                            result.requesterEmail = userData.user ? userData.user.email : '';
+                                        }
+                                        let requesterEmail = result.requesterEmail;
+
+                                        let isChild = false;
+                                        if (item && item.problem_id && item.problem_id != null) {
+                                            if (requesterEmail) {
+                                                if (toLowerCase(requesterEmail) === 'msftpc@microsoft.com' || toLowerCase(requesterEmail) === 'support@mail.support.microsoft.com') {
+                                                    isChild = true;
+                                                }
+                                            }
                                         }
 
-                                        if (!isNRN && result && result.ticket) {
+                                        if (requesterEmail) {
+                                            if (toLowerCase(requesterEmail) === 'bhushan.mb@ingrammicro.com' || toLowerCase(requesterEmail) === 'francisco.reguero@ingrammicro.com'
+                                                    || toLowerCase(requesterEmail) === 'komal.kale@ingrammicro.com' || toLowerCase(requesterEmail) === 'laura.kim@ingrammicro.com'
+                                                    || toLowerCase(requesterEmail) === 'maria.vicente@ingrammicro.com' || toLowerCase(requesterEmail) === 'pradeepa.sreenivasan@ingrammicro.com'
+                                                    || toLowerCase(requesterEmail) === 'pranjal.thakur@ingrammicro.com' || toLowerCase(requesterEmail) === 'sandeep.deshmukh@ingrammicro.com'
+                                                    || toLowerCase(requesterEmail) === 'seema.sharma@ingrammicro.com' || toLowerCase(requesterEmail) === 'sureshkumar.krishnamoorthy@ingrammicro.com') {
+                                                isChild = true;
+                                            }
+                                        }
+
+                                        let isDoNotReply = false;
+                                        if (requesterEmail) {
+                                            if (toLowerCase(requesterEmail).includes('do-not-reply') || toLowerCase(requesterEmail).includes('no-reply')) {
+                                                isDoNotReply = true;
+                                            }
+                                        }
+
+                                        if (!isChild) {
+                                            let legacyParentId = isStage ? 34395775209108 : 34691458866068;
+                                            const objParentId = result.custom_fields && result.custom_fields.find(item => item.id === legacyParentId);
+                                            const parentIdValue = objParentId ? objParentId.value : '';
+                                            if (parentIdValue && parentIdValue.length > 0) {
+                                                isChild = true;
+                                            }
+                                        }
+
+                                        if (isNRN || isChild || isDoNotReply) {
+                                            result = 'isInvalidTicket';
+                                        }
+
+                                        if (result && result.ticket && result !== 'isInvalidTicket') {
                                             result = {
                                             ...result,
                                             ...result.ticket
@@ -1135,14 +1180,7 @@
                                             if (result.created_at && result.created_at.value) {
                                                 result.created_at = result.created_at.value;
                                             }
-                                            let jsonPath = 'users';
-                                            let jsonId = result.requester_id;
-                                            result.requesterEmail = await getZendeskConfigEmailByKey(jsonId);
-                                            if (!result.requesterEmail) {
-                                                let userData = jsonId ? await this.getJsonById(zendeskBaseUrl, jsonPath, jsonId, this.funcCodeForJsonById) : '';
-                                                result.requesterEmail = userData.user ? userData.user.email : '';
-                                            }
-
+                                            
                                             let jsonIdForAssignee = result.assignee_id;
                                             result.strAgent = await getZendeskConfigNameByKey(jsonIdForAssignee);
                                             if (!result.strAgent) {
@@ -1568,7 +1606,13 @@
                     "us_modin_x2_sbo_nrn_sender",
                     "us_modin_x3_autoclose_nrn",
                     "us_modin_x3_nrn_sender",
-                    "us_modin_x3_panduit_nrn_sender_panduit"
+                    "us_modin_x3_panduit_nrn_sender_panduit",
+                    "us_modin_x3_sbo_nrn_sender",
+                    "gbl_support_nrn_sender",
+                    "order_management_proactive_notification",
+                    "gbl_support_spam_message",
+                    "gbl_partner_support_spam_message",
+                    "closed_by_merge"
                 ]);
 
                 return trueTags.has(tag) ? true : false;
