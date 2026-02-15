@@ -902,6 +902,7 @@
 
                             if (ticket === 'isInvalidTicket') {
                                 console.log(`Zendesk - Ticket ID ${ticketId} is marked as Invalid.`);
+                                this.hideLoadingPage && this.hideLoadingPage();
                                 const invalidTicketWarning = `Ticket ID ${ticketId} is invalid. It may be a child ticket, a spam ticket, contain NRN tags, or belong to a different group. Please enter a valid ticket ID.`;
                                 Xrm.Navigation.openAlertDialog({ confirmButtonLabel: "OK", text: invalidTicketWarning });
                                 return;
