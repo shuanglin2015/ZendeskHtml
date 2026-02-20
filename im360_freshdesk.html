@@ -116,10 +116,10 @@
                                 <strong class="MessageHeader">{{item.created_at && item.created_at.length > 10 ? item.created_at.substring(0, 10) : ''}} {{item.created_at && item.created_at.length > 19 ? item.created_at.substring(11, 19) : ''}} -
                                     From: {{item.author_email || record.requesterEmail}}</strong>
                                 <div style="margin-left: 20px;" v-html="item.html_body"></div>
-                                <div style="margin-left: 20px;" v-if="item.attachments && item.attachments[0]">
+                                <div style="margin-left: 20px;" v-if="item.attachments && item.attachments != '[]' && (typeof item.attachments === 'string' ? JSON.parse(item.attachments).length > 0 : item.attachments.length > 0)">
                                     <strong>Attachments:</strong>
                                     <ul>
-                                        <li v-for="attach in item.attachments" :key="attach.file_name">
+                                        <li v-for="attach in (typeof item.attachments === 'string' ? JSON.parse(item.attachments) : item.attachments)" :key="attach.file_name">
                                             <a :href="attach.content_url" target="_blank">{{attach.file_name}}</a>
                                         </li>
                                     </ul>
